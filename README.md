@@ -1,4 +1,4 @@
-# AmplificationTimeR_analysis_code_archive
+# AmplificationTimeR_paper_archive
 A repository to store any code that was run as part of the `AmplificationTimeR` publication.
 
 ## Overview of files and folders
