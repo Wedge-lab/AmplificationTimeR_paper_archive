@@ -1,0 +1,1807 @@
+---
+title: "AmplificationTimeR Manuscript Figures - excluding mismatched samples"
+author: "Maria Jakobsdottir"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  bookdown::html_document2:
+    toc: true 
+    toc_float: true
+    toc_depth: 3
+---
+
+This document contains analysis and figures for the revised AmplificationTimeR manuscript.
+
+#Libraries
+
+```{r}
+library(ggplot2)
+library(ggsignif)
+library(viridis)
+library(tidyr)
+library(survival)
+library(ggsurvfit)
+library(gridExtra)
+library(xtable)
+library(data.table)
+library(ggvenn)
+
+'%!in%' <- function(x,y)!('%in%'(x,y))
+```
+
+# Parameters
+Directories
+```{r}
+outdir <- "/mnt/bmh01-rds/UoOxford_David_W/b05055gj/AmplificationTimeR_associated/final_figures/"
+```
+
+Output figure parameters:
+```{r}
+figure_height <- 22.5
+figure_width <- 17.8
+figure_width_half <- 8.6
+resolution <- 350
+```
+
+# Data
+
+## Metadata
+
+```{r}
+metadata <- read.delim("/mnt/bmh01-rds/UoOxford_David_W/shared/PCAWG/release_may2016.v1.4.tsv", header = T, sep = "\t")
+annotation <-  read.delim("/mnt/bmh01-rds/UoOxford_David_W/shared/PCAWG/evolution_and_heterogeneity/icgc_sample_annotations_summary_table.txt", header = T, sep = "\t")
+```
+
+## Clinical
+```{r}
+clinical <- read.delim("/mnt/bmh01-rds/UoOxford_David_W/shared/PCAWG/metadata/pcawg_donor_clinical_August2016_v7.tsv", sep = "\t", header = FALSE, comment.char = "#")
+
+colnames(clinical) <- c("donor_unique_id",       "project_code",    "icgc_donor_id",
+                        "submitted_donor_id",      "tcga_donor_uuid", "donor_sex",
+                        "donor_vital_status",      "donor_diagnosis_icd10",   "first_therapy_type",
+                        "first_therapy_response",  "donor_age_at_diagnosis",  "donor_survival_time",
+                        "donor_interval_of_last_followup", "tobacco_smoking_history_indicator",
+                        "tobacco_smoking_intensity",       "alcohol_history",
+                        "alcohol_history_intensity",       "donor_wgs_included_excluded")
+
+```
+
+## AmplificationTimeR
+
+```{r}
+AmplificationTimeR_all_muts <- read.delim("/mnt/bmh01-rds/UoOxford_David_W/b05055gj/PCAWG_analysis/20230103_AmplificationTimeR_BRCA_OV_PRAD/PCAWG_MYC_BRCA-UK_OV-AU_PRAD-UK_AmplificationTimeR_all_muts_2024-01-06.txt", header = TRUE, sep = "\t")
+AmplificationTimeR_SBS1_5 <- read.delim("/mnt/bmh01-rds/UoOxford_David_W/b05055gj/PCAWG_analysis/20230103_AmplificationTimeR_BRCA_OV_PRAD/PCAWG_MYC_BRCA-UK_OV-AU_PRAD-UK_AmplificationTimeR_SBS1_5_muts_2024-01-06.txt", header = TRUE, sep = "\t")
+AmplificationTimeR_ctcpg <- read.delim("/mnt/bmh01-rds/UoOxford_David_W/b05055gj/PCAWG_analysis/20230103_AmplificationTimeR_BRCA_OV_PRAD/PCAWG_MYC_BRCA-UK_OV-AU_PRAD-UK_AmplificationTimeR_C_T_CpG_2024-01-06.txt", header = TRUE, sep = "\t")
+
+dim(AmplificationTimeR_all_muts)
+dim(AmplificationTimeR_SBS1_5)
+dim(AmplificationTimeR_ctcpg)
+
+summary(AmplificationTimeR_all_muts)
+summary(AmplificationTimeR_SBS1_5)
+summary(AmplificationTimeR_ctcpg)
+```
+
+## cancerTiming
+
+```{r}
+cancerTiming_all_muts <- read.delim("/mnt/bmh01-rds/UoOxford_David_W/b05055gj/PCAWG_analysis/cancerTiming_MYC_BRCA_OV_PRAD/PCAWG_MYC_BRCA-UK_OV-AU_PRAD-UK_cancerTiming_fullMLE_all_all_muts_2023-01-09.txt", header = TRUE, sep = "\t")
+cancerTiming_SBS1_5 <- read.delim("/mnt/bmh01-rds/UoOxford_David_W/b05055gj/PCAWG_analysis/cancerTiming_MYC_BRCA_OV_PRAD/PCAWG_MYC_BRCA-UK_OV-AU_PRAD-UK_cancerTiming_fullMLE_all_SBS1_5_2023-01-09.txt", header = TRUE, sep = "\t")
+cancerTiming_ctcpg <- read.delim("/mnt/bmh01-rds/UoOxford_David_W/b05055gj/PCAWG_analysis/cancerTiming_MYC_BRCA_OV_PRAD/PCAWG_MYC_BRCA-UK_OV-AU_PRAD-UK_cancerTiming_fullMLE_all_CT_at_CpG_2023-01-09.txt", header = TRUE, sep = "\t")
+
+dim(cancerTiming_all_muts)
+dim(cancerTiming_SBS1_5)
+dim(cancerTiming_ctcpg)
+
+summary(cancerTiming_all_muts)
+summary(cancerTiming_SBS1_5)
+summary(cancerTiming_ctcpg)
+```
+
+```{r}
+cancerTiming_eventnames <- c("t1_tot_cancerTiming","t2_tot_cancerTiming","t3_tot_cancerTiming","t4_tot_cancerTiming","t5_tot_cancerTiming",
+                             "t6_tot_cancerTiming","t7_tot_cancerTiming","t8_tot_cancerTiming","t9_tot_cancerTiming","t10_tot_cancerTiming")
+```
+
+
+```{r}
+cancerTiming_all_muts$t1_tot_cancerTiming <- (cancerTiming_all_muts[,3])
+cancerTiming_all_muts$t2_tot_cancerTiming <- rowSums(cancerTiming_all_muts[,3:4])
+cancerTiming_all_muts$t3_tot_cancerTiming <- rowSums(cancerTiming_all_muts[,3:5])
+cancerTiming_all_muts$t4_tot_cancerTiming <- rowSums(cancerTiming_all_muts[,3:6])
+cancerTiming_all_muts$t5_tot_cancerTiming <- rowSums(cancerTiming_all_muts[,3:7])
+cancerTiming_all_muts$t6_tot_cancerTiming <- rowSums(cancerTiming_all_muts[,3:8])
+cancerTiming_all_muts$t7_tot_cancerTiming <- rowSums(cancerTiming_all_muts[,3:9])
+cancerTiming_all_muts$t8_tot_cancerTiming <- rowSums(cancerTiming_all_muts[,3:10])
+cancerTiming_all_muts$t9_tot_cancerTiming <- rowSums(cancerTiming_all_muts[,3:11])
+cancerTiming_all_muts$t10_tot_cancerTiming <- rowSums(cancerTiming_all_muts[,3:12])
+cancerTiming_all_muts$cancerTiming_event_pi_no <- (rowSums(!is.na(cancerTiming_all_muts[,cancerTiming_eventnames]), na.rm = TRUE))
+cancerTiming_all_muts$cancerTiming_event_no <- (cancerTiming_all_muts$cancerTiming_event_pi_no-1)
+
+cancerTiming_SBS1_5$t1_tot_cancerTiming <- (cancerTiming_SBS1_5[,3])
+cancerTiming_SBS1_5$t2_tot_cancerTiming <- rowSums(cancerTiming_SBS1_5[,3:4])
+cancerTiming_SBS1_5$t3_tot_cancerTiming <- rowSums(cancerTiming_SBS1_5[,3:5])
+cancerTiming_SBS1_5$t4_tot_cancerTiming <- rowSums(cancerTiming_SBS1_5[,3:6])
+cancerTiming_SBS1_5$t5_tot_cancerTiming <- rowSums(cancerTiming_SBS1_5[,3:7])
+cancerTiming_SBS1_5$t6_tot_cancerTiming <- rowSums(cancerTiming_SBS1_5[,3:8])
+cancerTiming_SBS1_5$t7_tot_cancerTiming <- rowSums(cancerTiming_SBS1_5[,3:9])
+cancerTiming_SBS1_5$t8_tot_cancerTiming <- rowSums(cancerTiming_SBS1_5[,3:10])
+cancerTiming_SBS1_5$t9_tot_cancerTiming <- rowSums(cancerTiming_SBS1_5[,3:11])
+cancerTiming_SBS1_5$t10_tot_cancerTiming <- rowSums(cancerTiming_SBS1_5[,3:12])
+cancerTiming_SBS1_5$cancerTiming_event_pi_no <- (rowSums(!is.na(cancerTiming_SBS1_5[,cancerTiming_eventnames]), na.rm = TRUE))
+cancerTiming_SBS1_5$cancerTiming_event_no <- (cancerTiming_SBS1_5$cancerTiming_event_pi_no-1)
+
+cancerTiming_ctcpg$t1_tot_cancerTiming <- (cancerTiming_ctcpg[,3])
+cancerTiming_ctcpg$t2_tot_cancerTiming <- rowSums(cancerTiming_ctcpg[,3:4])
+cancerTiming_ctcpg$t3_tot_cancerTiming <- rowSums(cancerTiming_ctcpg[,3:5])
+cancerTiming_ctcpg$t4_tot_cancerTiming <- rowSums(cancerTiming_ctcpg[,3:6])
+cancerTiming_ctcpg$t5_tot_cancerTiming <- rowSums(cancerTiming_ctcpg[,3:7])
+cancerTiming_ctcpg$t6_tot_cancerTiming <- rowSums(cancerTiming_ctcpg[,3:8])
+cancerTiming_ctcpg$t7_tot_cancerTiming <- rowSums(cancerTiming_ctcpg[,3:9])
+cancerTiming_ctcpg$t8_tot_cancerTiming <- rowSums(cancerTiming_ctcpg[,3:10])
+cancerTiming_ctcpg$t9_tot_cancerTiming <- rowSums(cancerTiming_ctcpg[,3:11])
+cancerTiming_ctcpg$t10_tot_cancerTiming <- rowSums(cancerTiming_ctcpg[,3:12])
+cancerTiming_ctcpg$cancerTiming_event_pi_no <- (rowSums(!is.na(cancerTiming_ctcpg[,cancerTiming_eventnames]), na.rm = TRUE))
+cancerTiming_ctcpg$cancerTiming_event_no <- (cancerTiming_ctcpg$cancerTiming_event_pi_no-1)
+```
+
+### Remove final timepoint from cumulatively summed times, as this does not correspond to a gain timepoint, it will be equal to 1 and is only there because cancerTiming produces outputs as pi latencies between gains. 
+```{r}
+for(i in 1:nrow(cancerTiming_all_muts)){
+  if(!is.na(cancerTiming_all_muts$cancerTiming_event_pi_no[i])){
+    unnecessary_pi_column <- cancerTiming_eventnames[cancerTiming_all_muts$cancerTiming_event_pi_no[i]]
+    cancerTiming_all_muts[i,unnecessary_pi_column] <- NA
+  }
+}
+
+for(i in 1:nrow(cancerTiming_SBS1_5)){
+  if(!is.na(cancerTiming_SBS1_5$cancerTiming_event_pi_no[i])){
+    unnecessary_pi_column <- cancerTiming_eventnames[cancerTiming_SBS1_5$cancerTiming_event_pi_no[i]]
+    cancerTiming_SBS1_5[i,unnecessary_pi_column] <- NA
+  }
+}
+
+for(i in 1:nrow(cancerTiming_ctcpg)){
+  if(!is.na(cancerTiming_ctcpg$cancerTiming_event_pi_no[i])){
+    unnecessary_pi_column <- cancerTiming_eventnames[cancerTiming_ctcpg$cancerTiming_event_pi_no[i]]
+    cancerTiming_ctcpg[i,unnecessary_pi_column] <- NA
+  }
+}
+```
+
+```{r}
+dim(cancerTiming_all_muts)
+dim(cancerTiming_SBS1_5)
+dim(cancerTiming_ctcpg)
+```
+
+
+### Remove inappropriately timed samples
+```{r}
+cancerTiming_all_muts <- subset(cancerTiming_all_muts, highest_gain_class %!in% c("3+0","4+0","3+2","5+0"))
+cancerTiming_all_muts <- cancerTiming_all_muts[-which(cancerTiming_all_muts$highest_gain_class == "4+1" & cancerTiming_all_muts$wgd_status == "wgd"),]
+
+cancerTiming_SBS1_5 <- subset(cancerTiming_SBS1_5, highest_gain_class %!in% c("3+0","4+0","3+2","5+0"))
+cancerTiming_SBS1_5 <- cancerTiming_SBS1_5[-which(cancerTiming_SBS1_5$highest_gain_class == "4+1" & cancerTiming_SBS1_5$wgd_status == "wgd"),]
+
+cancerTiming_ctcpg <- subset(cancerTiming_ctcpg, highest_gain_class %!in% c("3+0","4+0","3+2","5+0"))
+cancerTiming_ctcpg <- cancerTiming_ctcpg[-which(cancerTiming_ctcpg$highest_gain_class == "4+1" & cancerTiming_ctcpg$wgd_status == "wgd"),]
+```
+
+
+## MutationTimeR
+
+```{r}
+MutationTimeR_total <- read.delim("/mnt/bmh01-rds/UoOxford_David_W/b05055gj/PCAWG_analysis/MutationTimeR_BRCA_OV_PRAD/summary_MutationTimeR_MYC_2023-01-25.txt", header = TRUE, sep = "\t")
+dim(MutationTimeR_total)
+summary(MutationTimeR_total)
+```
+
+```{r}
+colnames(MutationTimeR_total) <- c("seqnames","start","end","width","strand",
+                                   "major_cn","minor_cn","clonal_frequency",
+                                   "type","time_MutationTimeR","time.lo","time.up",
+                                   "time.2nd_MutationTimeR","time.2nd.lo","time.2nd.up","time.star",
+                                   "n.snv_mnv","do_ID","wgs_aliquot_id","tool",
+                                   "muts")
+MutationTimeR_total$highest_copy_number <- paste0(MutationTimeR_total$major_cn,"+",MutationTimeR_total$minor_cn)
+```
+
+## Mismatched samples
+```{r}
+mismatched_samples <- read.delim("/mnt/bmh01-rds/UoOxford_David_W/b05055gj/suspected_PCAWG_BRCA_OV_PRAD_suspect_mismatches_unchecked_070224.txt", sep = "\t", header = TRUE)
+```
+
+## Other features
+
+```{r}
+myc_gains <- read.delim("/mnt/bmh01-rds/UoOxford_David_W/b05055gj/PCAWG_analysis/MYC_segments_overview_BRCA_OV_PRAD_2022-12-05.txt", sep = "\t", header = TRUE)
+```
+
+```{r}
+clinical <- read.delim("/mnt/bmh01-rds/UoOxford_David_W/shared/PCAWG/metadata/pcawg_donor_clinical_August2016_v7.tsv", sep = "\t", header = FALSE, comment.char = "#")
+
+colnames(clinical) <- c("donor_unique_id",       "project_code",    "icgc_donor_id",
+                        "submitted_donor_id",      "tcga_donor_uuid", "donor_sex",
+                        "donor_vital_status",      "donor_diagnosis_icd10",   "first_therapy_type",
+                        "first_therapy_response",  "donor_age_at_diagnosis",  "donor_survival_time",
+                        "donor_interval_of_last_followup", "tobacco_smoking_history_indicator",
+                        "tobacco_smoking_intensity",       "alcohol_history",
+                        "alcohol_history_intensity",       "donor_wgs_included_excluded")
+
+```
+
+```{r}
+sbs_total <- read.csv("/mnt/bmh01-rds/UoOxford_David_W/shared/PCAWG/signatures/SigProfiler/PCAWG_sigProfiler_SBS_signatures_in_samples.csv", header = TRUE)
+```
+
+## Merging where appropriate
+Remove samples with evidence of mismatched data. Only keep one sample per donor. 
+```{r}
+samples <- subset(metadata, dcc_project_code %in% c("BRCA-UK","BRCA-EU","BRCA-US",
+                                                    "OV-AU","OV-US"))
+dim(samples)
+samples$tumor_wgs_aliquot_id <- gsub(",.*","",samples$tumor_wgs_aliquot_id)
+dim(samples)
+samples <- merge(samples[,c("tumor_wgs_aliquot_id","tumor_wgs_icgc_specimen_id","dcc_project_code","icgc_donor_id")], annotation, by.x = "tumor_wgs_aliquot_id", by.y = "tumour_aliquot_id")
+dim(samples)
+
+# *** REMOVE MISMATCHED DATA ***
+samples <- subset(samples, tumor_wgs_aliquot_id %!in% mismatched_samples$tumor_wgs_aliquot_id)
+#
+
+samples_brca <- subset(samples, dcc_project_code %in% c("BRCA-UK","BRCA-EU","BRCA-US"))
+dim(samples_brca)
+samples_ov <- subset(samples, dcc_project_code %in% c("OV-AU","OV-US"))
+dim(samples_ov)
+```
+
+Keep only samples with a gain of MYC
+```{r}
+myc_gains_keep <- subset(myc_gains, tumor_wgs_aliquot_id %in% samples$tumor_wgs_aliquot_id)
+```
+
+```{r}
+table(subset(myc_gains_keep, dcc_project_code %in% c("OV-AU","OV-US"))[,"highest_gain"])
+```
+```{r}
+dim(subset(myc_gains_keep, dcc_project_code %in% c("OV-AU","OV-US")))
+```
+
+111 OV samples minus 9 called as 1+1 (not a gain)
+```{r}
+111-9
+```
+
+```{r}
+table(subset(myc_gains_keep, dcc_project_code %in% c("BRCA-UK","BRCA-US","BRCA-EU"))[,"highest_gain"])
+```
+```{r}
+dim(subset(myc_gains_keep, dcc_project_code %in% c("BRCA-UK","BRCA-US","BRCA-EU")))
+```
+
+196 samples minus 40 non-gains (1+0,1+1, No segment)
+```{r}
+196-40
+```
+
+# Comparing Timing
+
+## BRCA
+
+```{r}
+AmplificationTimeR_all_muts_brca <- subset(AmplificationTimeR_all_muts, tumor_wgs_aliquot_id %in% samples_brca$tumor_wgs_aliquot_id)
+dim(AmplificationTimeR_all_muts_brca)
+AmplificationTimeR_SBS1_5_brca <- subset(AmplificationTimeR_SBS1_5, tumor_wgs_aliquot_id %in% samples_brca$tumor_wgs_aliquot_id)
+dim(AmplificationTimeR_SBS1_5_brca)
+AmplificationTimeR_ctcpg_brca <- subset(AmplificationTimeR_ctcpg, tumor_wgs_aliquot_id %in% samples_brca$tumor_wgs_aliquot_id)
+dim(AmplificationTimeR_ctcpg_brca)
+
+MutationTimeR_all_muts_brca <- subset(MutationTimeR_total, (wgs_aliquot_id %in% samples_brca$tumor_wgs_aliquot_id) &
+                                        (muts == "all"))
+dim(MutationTimeR_all_muts_brca)
+MutationTimeR_SBS1_5_brca <- subset(MutationTimeR_total, (wgs_aliquot_id %in% samples_brca$tumor_wgs_aliquot_id) &
+                                        (muts == "SBS1"))
+dim(MutationTimeR_SBS1_5_brca)
+MutationTimeR_ctcpg_brca <- subset(MutationTimeR_total, (wgs_aliquot_id %in% samples_brca$tumor_wgs_aliquot_id) &
+                                        (muts == "CT"))
+dim(MutationTimeR_ctcpg_brca)
+
+cancerTiming_all_muts_brca <- subset(cancerTiming_all_muts, tumor_wgs_aliquot_id %in% samples_brca$tumor_wgs_aliquot_id)
+dim(cancerTiming_all_muts_brca)
+cancerTiming_SBS1_5_brca <- subset(cancerTiming_SBS1_5, tumor_wgs_aliquot_id %in% samples_brca$tumor_wgs_aliquot_id)
+dim(cancerTiming_SBS1_5_brca)
+cancerTiming_ctcpg_brca <- subset(cancerTiming_ctcpg, tumor_wgs_aliquot_id %in% samples_brca$tumor_wgs_aliquot_id)
+dim(cancerTiming_ctcpg_brca)
+```
+
+## Table of successfully timed samples
+```{r}
+brca_time_success_tab <- as.data.frame(matrix(nrow = 3, ncol = 4))
+colnames(brca_time_success_tab) <- c("Mutations","AmplificationTimeR","MutationTimeR","cancerTiming")
+brca_time_success_tab$Mutations <- c("All","SBS","CT")
+
+brca_time_success_tab$AmplificationTimeR[1] <- sum(!is.na(AmplificationTimeR_all_muts_brca$t_1_mean_bootstrap))
+brca_time_success_tab$AmplificationTimeR[2] <- sum(!is.na(AmplificationTimeR_SBS1_5_brca$t_1_mean_bootstrap))
+brca_time_success_tab$AmplificationTimeR[3] <- sum(!is.na(AmplificationTimeR_ctcpg_brca$t_1_mean_bootstrap))
+
+brca_time_success_tab$MutationTimeR[1] <- sum(!is.na(MutationTimeR_all_muts_brca$time_MutationTimeR))
+brca_time_success_tab$MutationTimeR[2] <- sum(!is.na(MutationTimeR_SBS1_5_brca$time_MutationTimeR))
+brca_time_success_tab$MutationTimeR[3] <- sum(!is.na(MutationTimeR_ctcpg_brca$time_MutationTimeR))
+
+brca_time_success_tab$cancerTiming[1] <- sum(!is.na(cancerTiming_all_muts_brca$t1_tot_cancerTiming))
+brca_time_success_tab$cancerTiming[2] <- sum(!is.na(cancerTiming_SBS1_5_brca$t1_tot_cancerTiming))
+brca_time_success_tab$cancerTiming[3] <- sum(!is.na(cancerTiming_ctcpg_brca$t1_tot_cancerTiming))
+
+print(xtable(brca_time_success_tab,  type = "latex"))
+```
+
+```{r}
+total_timing_all_muts_brca <- merge(AmplificationTimeR_all_muts_brca,
+                                    MutationTimeR_all_muts_brca[,c("do_ID", "wgs_aliquot_id",
+                                                                   "seqnames", "start", "end", "time_MutationTimeR",
+                                                                   "time.lo" ,"time.up", "time.2nd_MutationTimeR",
+                                                                   "time.2nd.lo", "time.2nd.up", "highest_copy_number")],
+                                   by.x = c("sample","tumor_wgs_aliquot_id","highest_copy_number"),
+                                   by.y = c("do_ID","wgs_aliquot_id","highest_copy_number"),
+                                   all = TRUE)
+dim(total_timing_all_muts_brca)
+length(unique(total_timing_all_muts_brca$sample))
+total_timing_all_muts_brca <- merge(total_timing_all_muts_brca, 
+                                    cancerTiming_all_muts_brca[,c("sample", "highest_gain_class", "tumor_wgs_aliquot_id",
+                                                                  "tumor_wgs_icgc_specimen_id", "wgd_status", "t1_tot_cancerTiming",
+                                                                  "t2_tot_cancerTiming","t3_tot_cancerTiming", 
+                                                                  "t4_tot_cancerTiming",  "t5_tot_cancerTiming",
+                                                                  "t6_tot_cancerTiming","t7_tot_cancerTiming", 
+                                                                  "t8_tot_cancerTiming", "t9_tot_cancerTiming",
+                                                                  "t10_tot_cancerTiming", "t1", "t2", "t1_2.5", 
+                                                                  "t2_2.5", "t3_2.5", "t4_2.5", "t5_2.5", "t6_2.5",
+                                                                  "t7_2.5", "t8_2.5", "t9_2.5", "t10_2.5", "t1_97.5",
+                                                                  "t2_97.5", "t3_97.5", "t4_97.5", "t5_97.5", "t6_97.5",
+                                                                  "t7_97.5", "t8_97.5", "t9_97.5", "t10_97.5")],
+                                    by = c("sample","tumor_wgs_aliquot_id"),
+                                   all = TRUE)
+dim(total_timing_all_muts_brca)
+length(unique(total_timing_all_muts_brca$sample))
+
+total_timing_SBS1_5_brca <- merge(AmplificationTimeR_SBS1_5_brca,
+                                    MutationTimeR_SBS1_5_brca[,c("do_ID", "wgs_aliquot_id",
+                                                                   "seqnames", "start", "end", "time_MutationTimeR",
+                                                                   "time.lo" ,"time.up", "time.2nd_MutationTimeR",
+                                                                   "time.2nd.lo", "time.2nd.up", "highest_copy_number")],
+                                   by.x = c("sample","tumor_wgs_aliquot_id","highest_copy_number"),
+                                   by.y = c("do_ID","wgs_aliquot_id","highest_copy_number"),
+                                   all = TRUE)
+dim(total_timing_SBS1_5_brca)
+total_timing_SBS1_5_brca <- merge(total_timing_SBS1_5_brca, 
+                                    cancerTiming_SBS1_5_brca[,c("sample", "highest_gain_class", "tumor_wgs_aliquot_id",
+                                                                  "tumor_wgs_icgc_specimen_id", "wgd_status", 
+                                                                "t1_tot_cancerTiming","t2_tot_cancerTiming",
+                                                                  "t3_tot_cancerTiming","t4_tot_cancerTiming",   
+                                                                "t5_tot_cancerTiming", "t6_tot_cancerTiming",
+                                                                  "t7_tot_cancerTiming", "t8_tot_cancerTiming", 
+                                                                "t9_tot_cancerTiming", "t10_tot_cancerTiming", "t1", "t2", "t1_2.5", 
+                                                                  "t2_2.5", "t3_2.5", "t4_2.5", "t5_2.5", "t6_2.5",
+                                                                  "t7_2.5", "t8_2.5", "t9_2.5", "t10_2.5", "t1_97.5",
+                                                                  "t2_97.5", "t3_97.5", "t4_97.5", "t5_97.5", "t6_97.5",
+                                                                  "t7_97.5", "t8_97.5", "t9_97.5", "t10_97.5")],
+                                    by = c("sample","tumor_wgs_aliquot_id"),
+                                   all = TRUE)
+dim(total_timing_SBS1_5_brca)
+
+total_timing_ctcpg_brca <- merge(AmplificationTimeR_ctcpg_brca,
+                                    MutationTimeR_ctcpg_brca[,c("do_ID", "wgs_aliquot_id",
+                                                                   "seqnames", "start", "end", "time_MutationTimeR",
+                                                                   "time.lo" ,"time.up", "time.2nd_MutationTimeR",
+                                                                   "time.2nd.lo", "time.2nd.up", "highest_copy_number")],
+                                   by.x = c("sample","tumor_wgs_aliquot_id","highest_copy_number"),
+                                   by.y = c("do_ID","wgs_aliquot_id","highest_copy_number"),
+                                   all = TRUE)
+dim(total_timing_ctcpg_brca)
+total_timing_ctcpg_brca <- merge(total_timing_ctcpg_brca, 
+                                    cancerTiming_ctcpg_brca[,c("sample", "highest_gain_class", "tumor_wgs_aliquot_id",
+                                                                  "tumor_wgs_icgc_specimen_id", "wgd_status", "t1_tot_cancerTiming",
+                                                                  "t2_tot_cancerTiming", "t3_tot_cancerTiming",
+                                                               "t4_tot_cancerTiming", "t5_tot_cancerTiming", "t6_tot_cancerTiming",
+                                                                  "t7_tot_cancerTiming", "t8_tot_cancerTiming",
+                                                               "t9_tot_cancerTiming", "t10_tot_cancerTiming", "t1", "t2", "t1_2.5", 
+                                                                  "t2_2.5", "t3_2.5", "t4_2.5", "t5_2.5", "t6_2.5",
+                                                                  "t7_2.5", "t8_2.5", "t9_2.5", "t10_2.5", "t1_97.5",
+                                                                  "t2_97.5", "t3_97.5", "t4_97.5", "t5_97.5", "t6_97.5",
+                                                                  "t7_97.5", "t8_97.5", "t9_97.5", "t10_97.5")],
+                                    by = c("sample","tumor_wgs_aliquot_id"),
+                                   all = TRUE)
+dim(total_timing_ctcpg_brca)
+```
+
+### Venn diagram
+Venn diagram of samples timed
+```{r}
+brca_at_all_timed <- AmplificationTimeR_all_muts_brca$sample[!is.na(AmplificationTimeR_all_muts_brca$t_1)]
+brca_mt_all_timed <- MutationTimeR_all_muts_brca$do_ID[!is.na(MutationTimeR_all_muts_brca$time_MutationTimeR)]
+brca_ct_all_timed <- cancerTiming_all_muts_brca$sample[!is.na(cancerTiming_all_muts_brca$t1_tot_cancerTiming)]
+
+brca_all_timed_venn <- list(AmplificationTimeR = brca_at_all_timed,
+                            MutationTimeR = brca_mt_all_timed,
+                            cancerTiming = brca_ct_all_timed)
+
+brca_all_timed_venn_plot <- ggvenn(brca_all_timed_venn, fill_color = c("white","white","white","white"),
+        show_percentage = FALSE,
+        set_name_size = 3)+
+  ggtitle("BRCA - All Mutations")+
+  theme(plot.title = element_text(hjust = 0.5, size = 10))
+brca_all_timed_venn_plot
+```
+
+```{r}
+brca_at_sbs_timed <- AmplificationTimeR_SBS1_5_brca$sample[!is.na(AmplificationTimeR_SBS1_5_brca$t_1)]
+brca_mt_sbs_timed <- MutationTimeR_SBS1_5_brca$do_ID[!is.na(MutationTimeR_SBS1_5_brca$time_MutationTimeR)]
+brca_ct_sbs_timed <- cancerTiming_SBS1_5_brca$sample[!is.na(cancerTiming_SBS1_5_brca$t1_tot_cancerTiming)]
+
+brca_sbs_timed_venn <- list(AmplificationTimeR = brca_at_sbs_timed,
+                            MutationTimeR = brca_mt_sbs_timed,
+                            cancerTiming = brca_ct_sbs_timed)
+
+brca_sbs_timed_venn_plot <- ggvenn(brca_sbs_timed_venn, fill_color = c("white","white","white","white"),
+        show_percentage = FALSE,
+        set_name_size = 3)+
+  ggtitle("BRCA - SBS1 and SBS5 Mutations")+
+  theme(plot.title = element_text(hjust = 0.5, size = 10))
+brca_sbs_timed_venn_plot
+```
+
+```{r}
+brca_at_ctcpg_timed <- AmplificationTimeR_ctcpg_brca$sample[!is.na(AmplificationTimeR_ctcpg_brca$t_1)]
+brca_mt_ctcpg_timed <- MutationTimeR_ctcpg_brca$do_ID[!is.na(MutationTimeR_ctcpg_brca$time_MutationTimeR)]
+brca_ct_ctcpg_timed <- cancerTiming_ctcpg_brca$sample[!is.na(cancerTiming_ctcpg_brca$t1_tot_cancerTiming)]
+
+brca_ctcpg_timed_venn <- list(AmplificationTimeR = brca_at_ctcpg_timed,
+                            MutationTimeR = brca_mt_ctcpg_timed,
+                            cancerTiming = brca_ct_ctcpg_timed)
+
+brca_ctcpg_timed_venn_plot <- ggvenn(brca_ctcpg_timed_venn, fill_color = c("white","white","white","white"),
+        show_percentage = FALSE,
+        set_name_size = 3)+
+  ggtitle("BRCA - C>T at CpG Mutations")+
+  theme(plot.title = element_text(hjust = 0.5, size = 10))
+brca_ctcpg_timed_venn_plot
+```
+
+
+```{r}
+AmplificationTimeR_all_muts_brca$Tumour_type <- "BRCA"
+AmplificationTimeR_SBS1_5_brca$Tumour_type <- "BRCA"
+AmplificationTimeR_ctcpg_brca$Tumour_type <- "BRCA"
+```
+
+```{r}
+AmplificationTimeR_ctcpg_brca$Analysis_type <- "C > T at CpG"
+AmplificationTimeR_all_muts_brca$Analysis_type <- "All mutations"
+AmplificationTimeR_SBS1_5_brca$Analysis_type <- "SBS1 and SBS5"
+
+brca_timing_stack <- rbind(AmplificationTimeR_all_muts_brca, AmplificationTimeR_ctcpg_brca, AmplificationTimeR_SBS1_5_brca)
+```
+
+## OV
+
+```{r}
+AmplificationTimeR_all_muts_ov <- subset(AmplificationTimeR_all_muts, tumor_wgs_aliquot_id %in% samples_ov$tumor_wgs_aliquot_id)
+dim(AmplificationTimeR_all_muts_ov)
+AmplificationTimeR_SBS1_5_ov <- subset(AmplificationTimeR_SBS1_5, tumor_wgs_aliquot_id %in% samples_ov$tumor_wgs_aliquot_id)
+dim(AmplificationTimeR_SBS1_5_ov)
+AmplificationTimeR_ctcpg_ov <- subset(AmplificationTimeR_ctcpg, tumor_wgs_aliquot_id %in% samples_ov$tumor_wgs_aliquot_id)
+dim(AmplificationTimeR_ctcpg_ov)
+
+MutationTimeR_all_muts_ov <- subset(MutationTimeR_total, (wgs_aliquot_id %in% samples_ov$tumor_wgs_aliquot_id) &
+                                        (muts == "all"))
+dim(MutationTimeR_all_muts_ov)
+MutationTimeR_SBS1_5_ov <- subset(MutationTimeR_total, (wgs_aliquot_id %in% samples_ov$tumor_wgs_aliquot_id) &
+                                        (muts == "SBS1"))
+dim(MutationTimeR_SBS1_5_ov)
+MutationTimeR_ctcpg_ov <- subset(MutationTimeR_total, (wgs_aliquot_id %in% samples_ov$tumor_wgs_aliquot_id) &
+                                        (muts == "CT"))
+dim(MutationTimeR_ctcpg_ov)
+
+cancerTiming_all_muts_ov <- subset(cancerTiming_all_muts, tumor_wgs_aliquot_id %in% samples_ov$tumor_wgs_aliquot_id)
+dim(cancerTiming_all_muts_ov)
+cancerTiming_SBS1_5_ov <- subset(cancerTiming_SBS1_5, tumor_wgs_aliquot_id %in% samples_ov$tumor_wgs_aliquot_id)
+dim(cancerTiming_SBS1_5_ov)
+cancerTiming_ctcpg_ov <- subset(cancerTiming_ctcpg, tumor_wgs_aliquot_id %in% samples_ov$tumor_wgs_aliquot_id)
+dim(cancerTiming_ctcpg_ov)
+```
+
+## Table of successfully timed samples
+```{r}
+ov_time_success_tab <- as.data.frame(matrix(nrow = 3, ncol = 4))
+colnames(ov_time_success_tab) <- c("Mutations","AmplificationTimeR","MutationTimeR","cancerTiming")
+ov_time_success_tab$Mutations <- c("All","SBS","CT")
+
+ov_time_success_tab$AmplificationTimeR[1] <- sum(!is.na(AmplificationTimeR_all_muts_ov$t_1_mean_bootstrap))
+ov_time_success_tab$AmplificationTimeR[2] <- sum(!is.na(AmplificationTimeR_SBS1_5_ov$t_1_mean_bootstrap))
+ov_time_success_tab$AmplificationTimeR[3] <- sum(!is.na(AmplificationTimeR_ctcpg_ov$t_1_mean_bootstrap))
+
+ov_time_success_tab$MutationTimeR[1] <- sum(!is.na(MutationTimeR_all_muts_ov$time_MutationTimeR))
+ov_time_success_tab$MutationTimeR[2] <- sum(!is.na(MutationTimeR_SBS1_5_ov$time_MutationTimeR))
+ov_time_success_tab$MutationTimeR[3] <- sum(!is.na(MutationTimeR_ctcpg_ov$time_MutationTimeR))
+
+ov_time_success_tab$cancerTiming[1] <- sum(!is.na(cancerTiming_all_muts_ov$t1_tot_cancerTiming))
+ov_time_success_tab$cancerTiming[2] <- sum(!is.na(cancerTiming_SBS1_5_ov$t1_tot_cancerTiming))
+ov_time_success_tab$cancerTiming[3] <- sum(!is.na(cancerTiming_ctcpg_ov$t1_tot_cancerTiming))
+
+print(xtable(ov_time_success_tab,  type = "latex"))
+```
+
+```{r}
+total_timing_all_muts_ov <- merge(AmplificationTimeR_all_muts_ov,
+                                    MutationTimeR_all_muts_ov[,c("do_ID", "wgs_aliquot_id",
+                                                                   "seqnames", "start", "end", "time_MutationTimeR",
+                                                                   "time.lo" ,"time.up", "time.2nd_MutationTimeR",
+                                                                   "time.2nd.lo", "time.2nd.up", "highest_copy_number")],
+                                   by.x = c("sample","tumor_wgs_aliquot_id","highest_copy_number"),
+                                   by.y = c("do_ID","wgs_aliquot_id","highest_copy_number"),
+                                   all = TRUE)
+dim(total_timing_all_muts_ov)
+total_timing_all_muts_ov <- merge(total_timing_all_muts_ov, 
+                                    cancerTiming_all_muts_ov[,c("sample", "highest_gain_class", "tumor_wgs_aliquot_id",
+                                                                  "tumor_wgs_icgc_specimen_id", "wgd_status",
+                                                                "t1_tot_cancerTiming", "t2_tot_cancerTiming",
+                                                                  "t3_tot_cancerTiming", "t4_tot_cancerTiming",
+                                                                "t5_tot_cancerTiming", "t6_tot_cancerTiming",
+                                                                  "t7_tot_cancerTiming", "t8_tot_cancerTiming",
+                                                                "t9_tot_cancerTiming", "t10_tot_cancerTiming", "t1", "t2", "t1_2.5", 
+                                                                  "t2_2.5", "t3_2.5", "t4_2.5", "t5_2.5", "t6_2.5",
+                                                                  "t7_2.5", "t8_2.5", "t9_2.5", "t10_2.5", "t1_97.5",
+                                                                  "t2_97.5", "t3_97.5", "t4_97.5", "t5_97.5", "t6_97.5",
+                                                                  "t7_97.5", "t8_97.5", "t9_97.5", "t10_97.5")],
+                                    by = c("sample","tumor_wgs_aliquot_id"),
+                                   all = TRUE)
+dim(total_timing_all_muts_ov)
+
+total_timing_SBS1_5_ov <- merge(AmplificationTimeR_SBS1_5_ov,
+                                    MutationTimeR_SBS1_5_ov[,c("do_ID", "wgs_aliquot_id",
+                                                                   "seqnames", "start", "end", "time_MutationTimeR",
+                                                                   "time.lo" ,"time.up", "time.2nd_MutationTimeR",
+                                                                   "time.2nd.lo", "time.2nd.up", "highest_copy_number")],
+                                   by.x = c("sample","tumor_wgs_aliquot_id","highest_copy_number"),
+                                   by.y = c("do_ID","wgs_aliquot_id","highest_copy_number"),
+                                   all = TRUE)
+dim(total_timing_SBS1_5_ov)
+total_timing_SBS1_5_ov <- merge(total_timing_SBS1_5_ov, 
+                                    cancerTiming_SBS1_5_ov[,c("sample", "highest_gain_class", "tumor_wgs_aliquot_id",
+                                                                  "tumor_wgs_icgc_specimen_id", "wgd_status",
+                                                              "t1_tot_cancerTiming", "t2_tot_cancerTiming",
+                                                                  "t3_tot_cancerTiming", "t4_tot_cancerTiming",
+                                                              "t5_tot_cancerTiming", "t6_tot_cancerTiming",
+                                                                  "t7_tot_cancerTiming", "t8_tot_cancerTiming",
+                                                              "t9_tot_cancerTiming", "t10_tot_cancerTiming", "t1", "t2", "t1_2.5", 
+                                                                  "t2_2.5", "t3_2.5", "t4_2.5", "t5_2.5", "t6_2.5",
+                                                                  "t7_2.5", "t8_2.5", "t9_2.5", "t10_2.5", "t1_97.5",
+                                                                  "t2_97.5", "t3_97.5", "t4_97.5", "t5_97.5", "t6_97.5",
+                                                                  "t7_97.5", "t8_97.5", "t9_97.5", "t10_97.5")],
+                                    by = c("sample","tumor_wgs_aliquot_id"),
+                                   all = TRUE)
+dim(total_timing_SBS1_5_ov)
+
+total_timing_ctcpg_ov <- merge(AmplificationTimeR_ctcpg_ov,
+                                    MutationTimeR_ctcpg_ov[,c("do_ID", "wgs_aliquot_id",
+                                                                   "seqnames", "start", "end", "time_MutationTimeR",
+                                                                   "time.lo" ,"time.up", "time.2nd_MutationTimeR",
+                                                                   "time.2nd.lo", "time.2nd.up", "highest_copy_number")],
+                                   by.x = c("sample","tumor_wgs_aliquot_id","highest_copy_number"),
+                                   by.y = c("do_ID","wgs_aliquot_id","highest_copy_number"),
+                                   all = TRUE)
+dim(total_timing_ctcpg_ov)
+total_timing_ctcpg_ov <- merge(total_timing_ctcpg_ov, 
+                                    cancerTiming_ctcpg_ov[,c("sample", "highest_gain_class", "tumor_wgs_aliquot_id",
+                                                                  "tumor_wgs_icgc_specimen_id", "wgd_status", 
+                                                             "t1_tot_cancerTiming", "t2_tot_cancerTiming",
+                                                                   "t3_tot_cancerTiming","t4_tot_cancerTiming",
+                                                             "t5_tot_cancerTiming", "t6_tot_cancerTiming",
+                                                                  "t7_tot_cancerTiming", "t8_tot_cancerTiming",
+                                                             "t9_tot_cancerTiming", "t10_tot_cancerTiming", "t1", "t2", "t1_2.5", 
+                                                                  "t2_2.5", "t3_2.5", "t4_2.5", "t5_2.5", "t6_2.5",
+                                                                  "t7_2.5", "t8_2.5", "t9_2.5", "t10_2.5", "t1_97.5",
+                                                                  "t2_97.5", "t3_97.5", "t4_97.5", "t5_97.5", "t6_97.5",
+                                                                  "t7_97.5", "t8_97.5", "t9_97.5", "t10_97.5")],
+                                    by = c("sample","tumor_wgs_aliquot_id"),
+                                   all = TRUE)
+dim(total_timing_ctcpg_ov)
+```
+
+```{r}
+AmplificationTimeR_all_muts_ov$Tumour_type <- "OV"
+AmplificationTimeR_SBS1_5_ov$Tumour_type <- "OV"
+AmplificationTimeR_ctcpg_ov$Tumour_type <- "OV"
+```
+
+```{r}
+AmplificationTimeR_ctcpg_ov$Analysis_type <- "C > T at CpG"
+AmplificationTimeR_all_muts_ov$Analysis_type <- "All mutations"
+AmplificationTimeR_SBS1_5_ov$Analysis_type <- "SBS1 and SBS5"
+
+ov_timing_stack <- rbind(AmplificationTimeR_all_muts_ov, AmplificationTimeR_ctcpg_ov, AmplificationTimeR_SBS1_5_ov)
+```
+
+### Venn diagram
+Venn diagram of samples timed
+```{r}
+ov_at_all_timed <- AmplificationTimeR_all_muts_ov$sample[!is.na(AmplificationTimeR_all_muts_ov$t_1)]
+ov_mt_all_timed <- MutationTimeR_all_muts_ov$do_ID[!is.na(MutationTimeR_all_muts_ov$time_MutationTimeR)]
+ov_ct_all_timed <- cancerTiming_all_muts_ov$sample[!is.na(cancerTiming_all_muts_ov$t1_tot_cancerTiming)]
+
+ov_all_timed_venn <- list(AmplificationTimeR = ov_at_all_timed,
+                            MutationTimeR = ov_mt_all_timed,
+                            cancerTiming = ov_ct_all_timed)
+
+ov_all_timed_venn_plot <- ggvenn(ov_all_timed_venn, fill_color = c("white","white","white","white"),
+        show_percentage = FALSE,
+        set_name_size = 3)+
+  ggtitle("OV - All Mutations")+
+  theme(plot.title = element_text(hjust = 0.5, size = 10))
+ov_all_timed_venn_plot
+```
+
+```{r}
+ov_at_sbs_timed <- AmplificationTimeR_SBS1_5_ov$sample[!is.na(AmplificationTimeR_SBS1_5_ov$t_1)]
+ov_mt_sbs_timed <- MutationTimeR_SBS1_5_ov$do_ID[!is.na(MutationTimeR_SBS1_5_ov$time_MutationTimeR)]
+ov_ct_sbs_timed <- cancerTiming_SBS1_5_ov$sample[!is.na(cancerTiming_SBS1_5_ov$t1_tot_cancerTiming)]
+
+ov_sbs_timed_venn <- list(AmplificationTimeR = ov_at_sbs_timed,
+                            MutationTimeR = ov_mt_sbs_timed,
+                            cancerTiming = ov_ct_sbs_timed)
+
+ov_sbs_timed_venn_plot <- ggvenn(ov_sbs_timed_venn, fill_color = c("white","white","white","white"),
+        show_percentage = FALSE,
+        set_name_size = 3)+
+  ggtitle("OV - SBS1 and SBS5 Mutations")+
+  theme(plot.title = element_text(hjust = 0.5, size = 10))
+ov_sbs_timed_venn_plot
+```
+
+```{r}
+ov_at_ctcpg_timed <- AmplificationTimeR_ctcpg_ov$sample[!is.na(AmplificationTimeR_ctcpg_ov$t_1)]
+ov_mt_ctcpg_timed <- MutationTimeR_ctcpg_ov$do_ID[!is.na(MutationTimeR_ctcpg_ov$time_MutationTimeR)]
+ov_ct_ctcpg_timed <- cancerTiming_ctcpg_ov$sample[!is.na(cancerTiming_ctcpg_ov$t1_tot_cancerTiming)]
+
+ov_ctcpg_timed_venn <- list(AmplificationTimeR = ov_at_ctcpg_timed,
+                            MutationTimeR = ov_mt_ctcpg_timed,
+                            cancerTiming = ov_ct_ctcpg_timed)
+
+ov_ctcpg_timed_venn_plot <- ggvenn(ov_ctcpg_timed_venn, fill_color = c("white","white","white","white"),
+        show_percentage = FALSE,
+        set_name_size = 3)+
+  ggtitle("OV - C>T at CpG Mutations")+
+  theme(plot.title = element_text(hjust = 0.5, size = 10))
+ov_ctcpg_timed_venn_plot
+```
+
+# Venn diagram plot
+```{r}
+png(paste0(outdir,"timing_venn_supplementary_brca_ov_",Sys.Date(),".png"), 
+    res = resolution, height = 18, width = figure_width, units = "cm")
+grid.arrange(brca_all_timed_venn_plot+labs(tag = "A"),
+             brca_sbs_timed_venn_plot+labs(tag = "B"), 
+             brca_ctcpg_timed_venn_plot+labs(tag = "C"),
+             ov_all_timed_venn_plot+labs(tag = "D"), 
+             ov_sbs_timed_venn_plot+labs(tag = "E"), 
+             ov_ctcpg_timed_venn_plot+labs(tag = "F"),
+             nrow = 2, ncol = 3)
+dev.off()
+```
+
+# Paper plots
+Save intermediate data
+```{r}
+write.table(total_timing_all_muts_brca,
+            paste0(outdir,"total_timing_all_muts_brca_080224.txt"),
+            sep = "\t", row.names = FALSE, quote = FALSE)
+write.table(total_timing_all_muts_ov,
+            paste0(outdir,"total_timing_all_muts_ov_080224.txt"),
+            sep = "\t", row.names = FALSE, quote = FALSE)
+
+write.table(total_timing_SBS1_5_brca,
+            paste0(outdir,"total_timing_SBS1_5_brca_080224.txt"),
+            sep = "\t", row.names = FALSE, quote = FALSE)
+write.table(total_timing_SBS1_5_ov,
+            paste0(outdir,"total_timing_SBS1_5_ov_080224.txt"),
+            sep = "\t", row.names = FALSE, quote = FALSE)
+
+write.table(total_timing_ctcpg_brca,
+            paste0(outdir,"total_timing_ctcpg_brca_080224.txt"),
+            sep = "\t", row.names = FALSE, quote = FALSE)
+write.table(total_timing_ctcpg_ov,
+            paste0(outdir,"total_timing_ctcpg_ov_080224.txt"),
+            sep = "\t", row.names = FALSE, quote = FALSE)
+```
+
+```{r}
+#### Data ####
+total_timing_ctcpg_brca$Analysis_type <- "C > T at CpG"
+total_timing_all_muts_brca$Analysis_type <- "All mutations"
+total_timing_SBS1_5_brca$Analysis_type <- "SBS1 and SBS5"
+
+total_timing_ctcpg_ov$Analysis_type <- "C > T at CpG"
+total_timing_all_muts_ov$Analysis_type <- "All mutations"
+total_timing_SBS1_5_ov$Analysis_type <- "SBS1 and SBS5"
+
+total_timing_ctcpg_brca$Tumour_type <- "BRCA"
+total_timing_all_muts_brca$Tumour_type <- "BRCA"
+total_timing_SBS1_5_brca$Tumour_type <- "BRCA"
+
+total_timing_ctcpg_ov$Tumour_type <- "OV"
+total_timing_all_muts_ov$Tumour_type <- "OV"
+total_timing_SBS1_5_ov$Tumour_type <- "OV"
+
+# remove untimed regions
+total_timing_all_muts_brca <- total_timing_all_muts_brca[!is.na(total_timing_all_muts_brca$region),]
+total_timing_ctcpg_brca <- total_timing_ctcpg_brca[!is.na(total_timing_ctcpg_brca$region),]
+total_timing_SBS1_5_brca <- total_timing_SBS1_5_brca[!is.na(total_timing_SBS1_5_brca$region),]
+total_timing_all_muts_ov <- total_timing_all_muts_ov[!is.na(total_timing_all_muts_ov$region),]
+total_timing_ctcpg_ov <- total_timing_ctcpg_ov[!is.na(total_timing_ctcpg_ov$region),]
+total_timing_SBS1_5_ov <- total_timing_SBS1_5_ov[!is.na(total_timing_SBS1_5_ov$region),]
+```
+### Reformat data for new plot type ####
+#### get correct confidence intervals for cancerTiming ####
+
+```{r}
+total_timing_all_muts_brca$t1_low_adj <- NA
+total_timing_all_muts_brca$t1_high_adj <- NA
+total_timing_all_muts_brca$t2_low_adj <- NA
+total_timing_all_muts_brca$t2_high_adj <- NA
+for(i in 1:nrow(total_timing_all_muts_brca)){
+  
+  total_timing_all_muts_brca$t1_low_adj[i] <- total_timing_all_muts_brca$t1_2.5[i]
+  total_timing_all_muts_brca$t1_high_adj[i] <- total_timing_all_muts_brca$t1_97.5[i]
+  
+  total_timing_all_muts_brca$t2_low_adj[i] <- total_timing_all_muts_brca$t2_2.5[i] + total_timing_all_muts_brca$t1[i]
+  total_timing_all_muts_brca$t2_high_adj[i] <- total_timing_all_muts_brca$t2_97.5[i] + total_timing_all_muts_brca$t1[i]
+}
+
+total_timing_SBS1_5_brca$t1_low_adj <- NA
+total_timing_SBS1_5_brca$t1_high_adj <- NA
+total_timing_SBS1_5_brca$t2_low_adj <- NA
+total_timing_SBS1_5_brca$t2_high_adj <- NA
+for(i in 1:nrow(total_timing_SBS1_5_brca)){
+  
+  total_timing_SBS1_5_brca$t1_low_adj[i] <- total_timing_SBS1_5_brca$t1_2.5[i]
+  total_timing_SBS1_5_brca$t1_high_adj[i] <- total_timing_SBS1_5_brca$t1_97.5[i]
+  
+  total_timing_SBS1_5_brca$t2_low_adj[i] <- total_timing_SBS1_5_brca$t2_2.5[i] + total_timing_SBS1_5_brca$t1[i]
+  total_timing_SBS1_5_brca$t2_high_adj[i] <- total_timing_SBS1_5_brca$t2_97.5[i] + total_timing_SBS1_5_brca$t1[i]
+}
+
+total_timing_ctcpg_brca$t1_low_adj <- NA
+total_timing_ctcpg_brca$t1_high_adj <- NA
+total_timing_ctcpg_brca$t2_low_adj <- NA
+total_timing_ctcpg_brca$t2_high_adj <- NA
+for(i in 1:nrow(total_timing_ctcpg_brca)){
+  
+  total_timing_ctcpg_brca$t1_low_adj[i] <- total_timing_ctcpg_brca$t1_2.5[i]
+  total_timing_ctcpg_brca$t1_high_adj[i] <- total_timing_ctcpg_brca$t1_97.5[i]
+  
+  total_timing_ctcpg_brca$t2_low_adj[i] <- total_timing_ctcpg_brca$t2_2.5[i] + total_timing_ctcpg_brca$t1[i]
+  total_timing_ctcpg_brca$t2_high_adj[i] <- total_timing_ctcpg_brca$t2_97.5[i] + total_timing_ctcpg_brca$t1[i]
+}
+
+# OV
+total_timing_all_muts_ov$t1_low_adj <- NA
+total_timing_all_muts_ov$t1_high_adj <- NA
+total_timing_all_muts_ov$t2_low_adj <- NA
+total_timing_all_muts_ov$t2_high_adj <- NA
+for(i in 1:nrow(total_timing_all_muts_ov)){
+  
+  total_timing_all_muts_ov$t1_low_adj[i] <- total_timing_all_muts_ov$t1_2.5[i]
+  total_timing_all_muts_ov$t1_high_adj[i] <- total_timing_all_muts_ov$t1_97.5[i]
+  
+  
+  total_timing_all_muts_ov$t2_low_adj[i] <- total_timing_all_muts_ov$t2_2.5[i] + total_timing_all_muts_ov$t1[i]
+  total_timing_all_muts_ov$t2_high_adj[i] <- total_timing_all_muts_ov$t2_97.5[i] + total_timing_all_muts_ov$t1[i]
+}
+
+total_timing_SBS1_5_ov$t1_low_adj <- NA
+total_timing_SBS1_5_ov$t1_high_adj <- NA
+total_timing_SBS1_5_ov$t2_low_adj <- NA
+total_timing_SBS1_5_ov$t2_high_adj <- NA
+for(i in 1:nrow(total_timing_SBS1_5_ov)){
+  
+  total_timing_SBS1_5_ov$t1_low_adj[i] <- total_timing_SBS1_5_ov$t1_2.5[i]
+  total_timing_SBS1_5_ov$t1_high_adj[i] <- total_timing_SBS1_5_ov$t1_97.5[i]
+  
+  total_timing_SBS1_5_ov$t2_low_adj[i] <- total_timing_SBS1_5_ov$t2_2.5[i] + total_timing_SBS1_5_ov$t1[i]
+  total_timing_SBS1_5_ov$t2_high_adj[i] <- total_timing_SBS1_5_ov$t2_97.5[i] + total_timing_SBS1_5_ov$t1[i]
+}
+
+total_timing_ctcpg_ov$t1_low_adj <- NA
+total_timing_ctcpg_ov$t1_high_adj <- NA
+total_timing_ctcpg_ov$t2_low_adj <- NA
+total_timing_ctcpg_ov$t2_high_adj <- NA
+for(i in 1:nrow(total_timing_ctcpg_ov)){
+  
+  total_timing_ctcpg_ov$t1_low_adj[i] <- total_timing_ctcpg_ov$t1_2.5[i]
+  total_timing_ctcpg_ov$t1_high_adj[i] <- total_timing_ctcpg_ov$t1_97.5[i]
+  
+  total_timing_ctcpg_ov$t2_low_adj[i] <- total_timing_ctcpg_ov$t2_2.5[i] + total_timing_ctcpg_ov$t1[i]
+  total_timing_ctcpg_ov$t2_high_adj[i] <- total_timing_ctcpg_ov$t2_97.5[i] + total_timing_ctcpg_ov$t1[i]
+}
+```
+### BRCA plot format data 
+#### t1 
+```{r}
+brca_t1_plot_data_ct <- rbind(total_timing_all_muts_brca[,c("sample","tumor_wgs_aliquot_id","t_1_mean_bootstrap","t_1_lower_ci","t_1_upper_ci",
+                                                            "t1_tot_cancerTiming","t1_low_adj","t1_high_adj",
+                                                            "Analysis_type","clonality_status","num_mutations_used")],
+                              total_timing_SBS1_5_brca[,c("sample","tumor_wgs_aliquot_id","t_1_mean_bootstrap","t_1_lower_ci","t_1_upper_ci",
+                                                          "t1_tot_cancerTiming","t1_low_adj","t1_high_adj",
+                                                          "Analysis_type","clonality_status","num_mutations_used")],
+                              total_timing_ctcpg_brca[,c("sample","tumor_wgs_aliquot_id","t_1_mean_bootstrap","t_1_lower_ci","t_1_upper_ci",
+                                                         "t1_tot_cancerTiming","t1_low_adj","t1_high_adj",
+                                                         "Analysis_type","clonality_status","num_mutations_used")])
+brca_t1_plot_data_ct$t1_tool <- "cancerTiming"
+colnames(brca_t1_plot_data_ct) <- c("Sample","wgs_id","t1_AmplificationTimeR","t1_AmplificationTimeR_low","t1_AmplificationTimeR_high",
+                                    "t1_other","t1_other_low","t1_other_high",
+                                    "mut_type","Clonality","num_muts","t1_tool")
+
+brca_t1_plot_data_mt <- rbind(total_timing_all_muts_brca[,c("sample","tumor_wgs_aliquot_id","t_1_mean_bootstrap","t_1_lower_ci","t_1_upper_ci",
+                                                            "time_MutationTimeR","time.lo","time.up",
+                                                            "Analysis_type","clonality_status","num_mutations_used")],
+                              total_timing_SBS1_5_brca[,c("sample","tumor_wgs_aliquot_id","t_1_mean_bootstrap","t_1_lower_ci","t_1_upper_ci",
+                                                          "time_MutationTimeR","time.lo","time.up",
+                                                          "Analysis_type","clonality_status","num_mutations_used")],
+                              total_timing_ctcpg_brca[,c("sample","tumor_wgs_aliquot_id","t_1_mean_bootstrap","t_1_lower_ci","t_1_upper_ci",
+                                                         "time_MutationTimeR","time.lo","time.up",
+                                                         "Analysis_type","clonality_status","num_mutations_used")])
+brca_t1_plot_data_mt$t1_tool <- "MutationTimeR"
+colnames(brca_t1_plot_data_mt) <- c("Sample","wgs_id","t1_AmplificationTimeR","t1_AmplificationTimeR_low","t1_AmplificationTimeR_high",
+                                    "t1_other","t1_other_low","t1_other_high",
+                                    "mut_type","Clonality","num_muts","t1_tool")
+
+
+brca_t1_plot_data <- rbind(brca_t1_plot_data_ct, brca_t1_plot_data_mt)
+
+
+t1_brca_facet_plot <- ggplot(brca_t1_plot_data, aes(x = t1_AmplificationTimeR,
+                                       xmin = t1_AmplificationTimeR_low, xmax = t1_AmplificationTimeR_high,
+                                       y = t1_other,
+                                       ymin = t1_other_low, ymax = t1_other_high,
+                                       colour = num_muts))+
+  geom_pointrange(aes(shape = Clonality), alpha = 0.5, size = 0.3)+
+  geom_abline(slope = 1, intercept = 0)+
+  geom_errorbarh(aes(xmax = t1_AmplificationTimeR_high, xmin = t1_AmplificationTimeR_low, height = 0))+
+  ggtitle("BRCA - First MYC Gain")+
+  xlab("AmplificationTimeR")+
+  ylab("")+
+  theme_light()+
+  theme(legend.text = element_text(size = 6), axis.text.x = element_text(size = 6), axis.text.y = element_text(size = 6), axis.title = element_text(size = 8), legend.key.width = unit(0.5, "cm"), legend.title = element_text(size = 6), plot.title = element_text(size = 8, hjust = 0.5), strip.text = element_text(size = 8),
+        plot.margin = margin(t = 0.1, r = 0, b = 0, l = 0.1, unit = "cm"))+
+  facet_grid(cols = vars(t1_tool), rows = vars(mut_type), switch = "y")+
+  scale_colour_viridis(rescaler = function(x, to = c(0, 1), from = NULL) {
+    ifelse(x<100, 
+           scales::rescale(x,
+                           to = to,
+                           from = c(min(x, na.rm = TRUE), 100)),
+           1)}, option = "magma", name = "Number of\n mutations", begin = 0, end = 0.9)+
+  scale_shape(guide = "none")+
+  geom_hline(yintercept = 1, colour = "grey", linetype = 2)+
+  geom_vline(xintercept = 1, colour = "grey", linetype = 2)
+
+t1_brca_facet_plot
+```
+#### t2
+```{r}
+brca_t2_plot_data_ct <- rbind(total_timing_all_muts_brca[,c("sample","tumor_wgs_aliquot_id","t_2_mean_bootstrap","t_2_lower_ci","t_2_upper_ci",
+                                                            "t2_tot_cancerTiming","t2_low_adj","t2_high_adj",
+                                                            "Analysis_type","clonality_status","num_mutations_used")],
+                              total_timing_SBS1_5_brca[,c("sample","tumor_wgs_aliquot_id","t_2_mean_bootstrap","t_2_lower_ci","t_2_upper_ci",
+                                                          "t2_tot_cancerTiming","t2_low_adj","t2_high_adj",
+                                                          "Analysis_type","clonality_status","num_mutations_used")],
+                              total_timing_ctcpg_brca[,c("sample","tumor_wgs_aliquot_id","t_2_mean_bootstrap","t_2_lower_ci","t_2_upper_ci",
+                                                         "t2_tot_cancerTiming","t2_low_adj","t2_high_adj",
+                                                         "Analysis_type","clonality_status","num_mutations_used")])
+brca_t2_plot_data_ct$t2_tool <- "cancerTiming"
+colnames(brca_t2_plot_data_ct) <- c("Sample","wgs_id","t2_AmplificationTimeR","t2_AmplificationTimeR_low","t2_AmplificationTimeR_high",
+                                    "t2_other","t2_other_low","t2_other_high",
+                                    "mut_type","Clonality","num_muts","t2_tool")
+
+brca_t2_plot_data_mt <- rbind(total_timing_all_muts_brca[,c("sample","tumor_wgs_aliquot_id","t_2_mean_bootstrap","t_2_lower_ci","t_2_upper_ci",
+                                                            "time.2nd_MutationTimeR","time.2nd.lo","time.2nd.up",
+                                                            "Analysis_type","clonality_status","num_mutations_used")],
+                              total_timing_SBS1_5_brca[,c("sample","tumor_wgs_aliquot_id","t_2_mean_bootstrap","t_2_lower_ci","t_2_upper_ci",
+                                                          "time.2nd_MutationTimeR","time.2nd.lo","time.2nd.up",
+                                                          "Analysis_type","clonality_status","num_mutations_used")],
+                              total_timing_ctcpg_brca[,c("sample","tumor_wgs_aliquot_id","t_2_mean_bootstrap","t_2_lower_ci","t_2_upper_ci",
+                                                         "time.2nd_MutationTimeR","time.2nd.lo","time.2nd.up",
+                                                         "Analysis_type","clonality_status","num_mutations_used")])
+brca_t2_plot_data_mt$t2_tool <- "MutationTimeR"
+colnames(brca_t2_plot_data_mt) <- c("Sample","wgs_id","t2_AmplificationTimeR","t2_AmplificationTimeR_low","t2_AmplificationTimeR_high",
+                                    "t2_other","t2_other_low","t2_other_high",
+                                    "mut_type","Clonality","num_muts","t2_tool")
+
+
+brca_t2_plot_data <- rbind(brca_t2_plot_data_ct, brca_t2_plot_data_mt)
+
+
+t2_brca_facet_plot <- ggplot(brca_t2_plot_data, aes(x = t2_AmplificationTimeR,
+                              xmin = t2_AmplificationTimeR_low, xmax = t2_AmplificationTimeR_high,
+                              y = t2_other,
+                              ymin = t2_other_low, ymax = t2_other_high,
+                              colour = num_muts))+
+  geom_pointrange(aes(shape = Clonality), alpha = 0.5, size = 0.3)+
+  geom_abline(slope = 1, intercept = 0)+
+  geom_errorbarh(aes(xmax = t2_AmplificationTimeR_high, xmin = t2_AmplificationTimeR_low, height = 0))+
+  ggtitle("BRCA - Second MYC gain")+
+  xlab("AmplificationTimeR")+
+  ylab("")+
+  theme_light()+
+  theme(legend.text = element_text(size = 6), axis.text.x = element_text(size = 6), axis.text.y = element_text(size = 6), axis.title = element_text(size = 8), legend.key.width = unit(0.5, "cm"), legend.title = element_text(size = 6), plot.title = element_text(size = 8, hjust = 0.5), strip.text = element_text(size = 8),
+        plot.margin = margin(t = 0.1, r = 0, b = 0, l = 0, unit = "cm"))+
+  facet_grid(cols = vars(t2_tool), rows = vars(mut_type), switch = "y")+
+  scale_colour_viridis(rescaler = function(x, to = c(0, 1), from = NULL) {
+    ifelse(x<100, 
+           scales::rescale(x,
+                           to = to,
+                           from = c(min(x, na.rm = TRUE), 100)),
+           1)}, option = "magma", name = "Number of\n mutations", begin = 0, end = 0.9)+
+  scale_shape(name = "Clonality")+
+  coord_cartesian(ylim = c(0,1.5))+
+  geom_hline(yintercept = 1, colour = "grey", linetype = 2)+
+  geom_vline(xintercept = 1, colour = "grey", linetype = 2)
+
+t2_brca_facet_plot
+```
+### OV 
+#### t1 plot 
+```{r}
+ov_t1_plot_data_ct <- rbind(total_timing_all_muts_ov[,c("sample","tumor_wgs_aliquot_id","t_1_mean_bootstrap","t_1_lower_ci","t_1_upper_ci",
+                                                            "t1_tot_cancerTiming","t1_low_adj","t1_high_adj",
+                                                            "Analysis_type","clonality_status","num_mutations_used")],
+                              total_timing_SBS1_5_ov[,c("sample","tumor_wgs_aliquot_id","t_1_mean_bootstrap","t_1_lower_ci","t_1_upper_ci",
+                                                          "t1_tot_cancerTiming","t1_low_adj","t1_high_adj",
+                                                          "Analysis_type","clonality_status","num_mutations_used")],
+                              total_timing_ctcpg_ov[,c("sample","tumor_wgs_aliquot_id","t_1_mean_bootstrap","t_1_lower_ci","t_1_upper_ci",
+                                                         "t1_tot_cancerTiming","t1_low_adj","t1_high_adj",
+                                                         "Analysis_type","clonality_status","num_mutations_used")])
+ov_t1_plot_data_ct$t1_tool <- "cancerTiming"
+colnames(ov_t1_plot_data_ct) <- c("Sample","wgs_id","t1_AmplificationTimeR","t1_AmplificationTimeR_low","t1_AmplificationTimeR_high",
+                                    "t1_other","t1_other_low","t1_other_high",
+                                    "mut_type","Clonality","num_muts","t1_tool")
+
+ov_t1_plot_data_mt <- rbind(total_timing_all_muts_ov[,c("sample","tumor_wgs_aliquot_id","t_1_mean_bootstrap","t_1_lower_ci","t_1_upper_ci",
+                                                        "time_MutationTimeR","time.lo","time.up",
+                                                            "Analysis_type","clonality_status","num_mutations_used")],
+                              total_timing_SBS1_5_ov[,c("sample","tumor_wgs_aliquot_id","t_1_mean_bootstrap","t_1_lower_ci","t_1_upper_ci",
+                                                        "time_MutationTimeR","time.lo","time.up",
+                                                          "Analysis_type","clonality_status","num_mutations_used")],
+                              total_timing_ctcpg_ov[,c("sample","tumor_wgs_aliquot_id","t_1_mean_bootstrap","t_1_lower_ci","t_1_upper_ci",
+                                                       "time_MutationTimeR","time.lo","time.up",
+                                                         "Analysis_type","clonality_status","num_mutations_used")])
+ov_t1_plot_data_mt$t1_tool <- "MutationTimeR"
+colnames(ov_t1_plot_data_mt) <- c("Sample","wgs_id","t1_AmplificationTimeR","t1_AmplificationTimeR_low","t1_AmplificationTimeR_high",
+                                    "t1_other","t1_other_low","t1_other_high",
+                                    "mut_type","Clonality","num_muts","t1_tool")
+
+
+ov_t1_plot_data <- rbind(ov_t1_plot_data_ct, ov_t1_plot_data_mt)
+
+
+t1_ov_facet_plot <- ggplot(ov_t1_plot_data, aes(x = t1_AmplificationTimeR,
+                              xmin = t1_AmplificationTimeR_low, xmax = t1_AmplificationTimeR_high,
+                              y = t1_other,
+                              ymin = t1_other_low, ymax = t1_other_high,
+                              colour = num_muts))+
+  geom_pointrange(aes(shape = Clonality), alpha = 0.5, size = 0.3)+
+  geom_abline(slope = 1, intercept = 0)+
+  geom_errorbarh(aes(xmax = t1_AmplificationTimeR_high, xmin = t1_AmplificationTimeR_low, height = 0))+
+  ggtitle("OV - First MYC Gain")+
+  xlab("AmplificationTimeR")+
+  ylab("")+
+  theme_light()+
+  theme(legend.text = element_text(size = 6), axis.text.x = element_text(size = 6), axis.text.y = element_text(size = 6), axis.title = element_text(size = 8), legend.key.width = unit(0.5, "cm"), legend.title = element_text(size = 6), plot.title = element_text(size = 8, hjust = 0.5), strip.text = element_text(size = 8),
+        plot.margin = margin(t = 0, r = 0, b = 0.1, l = 0.1, unit = "cm"))+
+  facet_grid(cols = vars(t1_tool), rows = vars(mut_type), switch = "y")+
+  scale_colour_viridis(rescaler = function(x, to = c(0, 1), from = NULL) {
+    ifelse(x<100, 
+           scales::rescale(x,
+                           to = to,
+                           from = c(min(x, na.rm = TRUE), 100)),
+           1)}, option = "magma", name = "Number of\n mutations", begin = 0, end = 0.9)+
+  scale_shape(guide = "none")+
+  geom_hline(yintercept = 1, colour = "grey", linetype = 2)+
+  geom_vline(xintercept = 1, colour = "grey", linetype = 2)
+
+t1_ov_facet_plot
+```
+#### t2 
+```{r}
+ov_t2_plot_data_ct <- rbind(total_timing_all_muts_ov[,c("sample","tumor_wgs_aliquot_id","t_2_mean_bootstrap","t_2_lower_ci","t_2_upper_ci",
+                                                            "t2_tot_cancerTiming","t2_low_adj","t2_high_adj",
+                                                            "Analysis_type","clonality_status","num_mutations_used")],
+                              total_timing_SBS1_5_ov[,c("sample","tumor_wgs_aliquot_id","t_2_mean_bootstrap","t_2_lower_ci","t_2_upper_ci",
+                                                          "t2_tot_cancerTiming","t2_low_adj","t2_high_adj",
+                                                          "Analysis_type","clonality_status","num_mutations_used")],
+                              total_timing_ctcpg_ov[,c("sample","tumor_wgs_aliquot_id","t_2_mean_bootstrap","t_2_lower_ci","t_2_upper_ci",
+                                                         "t2_tot_cancerTiming","t2_low_adj","t2_high_adj",
+                                                         "Analysis_type","clonality_status","num_mutations_used")])
+ov_t2_plot_data_ct$t2_tool <- "cancerTiming"
+colnames(ov_t2_plot_data_ct) <- c("Sample","wgs_id","t2_AmplificationTimeR","t2_AmplificationTimeR_low","t2_AmplificationTimeR_high",
+                                    "t2_other","t2_other_low","t2_other_high",
+                                    "mut_type","Clonality","num_muts","t2_tool")
+
+ov_t2_plot_data_mt <- rbind(total_timing_all_muts_ov[,c("sample","tumor_wgs_aliquot_id","t_2_mean_bootstrap","t_2_lower_ci","t_2_upper_ci",
+                                                        "time.2nd_MutationTimeR","time.2nd.lo","time.2nd.up",
+                                                            "Analysis_type","clonality_status","num_mutations_used")],
+                              total_timing_SBS1_5_ov[,c("sample","tumor_wgs_aliquot_id","t_2_mean_bootstrap","t_2_lower_ci","t_2_upper_ci",
+                                                        "time.2nd_MutationTimeR","time.2nd.lo","time.2nd.up",
+                                                          "Analysis_type","clonality_status","num_mutations_used")],
+                              total_timing_ctcpg_ov[,c("sample","tumor_wgs_aliquot_id","t_2_mean_bootstrap","t_2_lower_ci","t_2_upper_ci",
+                                                       "time.2nd_MutationTimeR","time.2nd.lo","time.2nd.up",
+                                                         "Analysis_type","clonality_status","num_mutations_used")])
+ov_t2_plot_data_mt$t2_tool <- "MutationTimeR"
+colnames(ov_t2_plot_data_mt) <- c("Sample","wgs_id","t2_AmplificationTimeR","t2_AmplificationTimeR_low","t2_AmplificationTimeR_high",
+                                    "t2_other","t2_other_low","t2_other_high",
+                                    "mut_type","Clonality","num_muts","t2_tool")
+
+
+ov_t2_plot_data <- rbind(ov_t2_plot_data_ct, ov_t2_plot_data_mt)
+
+
+t2_ov_facet_plot <- ggplot(ov_t2_plot_data, aes(x = t2_AmplificationTimeR,
+                              xmin = t2_AmplificationTimeR_low, xmax = t2_AmplificationTimeR_high,
+                              y = t2_other,
+                              ymin = t2_other_low, ymax = t2_other_high,
+                              colour = num_muts))+
+  geom_pointrange(aes(shape = Clonality), alpha = 0.5, size = 0.3)+
+  geom_abline(slope = 1, intercept = 0)+
+  geom_errorbarh(aes(xmax = t2_AmplificationTimeR_high, xmin = t2_AmplificationTimeR_low, height = 0))+
+  ggtitle("OV - Second MYC gain")+
+  xlab("AmplificationTimeR")+
+  ylab("")+
+  theme_light()+
+  theme(legend.text = element_text(size = 6), axis.text.x = element_text(size = 6), axis.text.y = element_text(size = 6), axis.title = element_text(size = 8), legend.key.width = unit(0.5, "cm"), legend.title = element_text(size = 6), plot.title = element_text(size = 8, hjust = 0.5), strip.text = element_text(size = 8),
+        plot.margin = margin(t = 0, r = 0, b = 0.1, l = 0, unit = "cm"))+
+  facet_grid(cols = vars(t2_tool), rows = vars(mut_type), switch = "y")+
+  scale_colour_viridis(rescaler = function(x, to = c(0, 1), from = NULL) {
+    ifelse(x<100, 
+           scales::rescale(x,
+                           to = to,
+                           from = c(min(x, na.rm = TRUE), 100)),
+           1)}, option = "magma", name = "Number of\n mutations", begin = 0, end = 0.9)+
+  scale_shape(guide = "none")+
+  geom_hline(yintercept = 1, colour = "grey", linetype = 2)+
+  geom_vline(xintercept = 1, colour = "grey", linetype = 2)
+
+t2_ov_facet_plot
+```
+## Facet plot composite 
+```{r}
+png(paste0(outdir,"tool_timing_comparison_composite_facet_",Sys.Date(),".png"), 
+    res = resolution, height = 18, width = figure_width, units = "cm")
+grid.arrange(t1_brca_facet_plot+labs(tag = "A"), 
+             t2_brca_facet_plot+labs(tag = "B"),
+             t1_ov_facet_plot+labs(tag = "C"),
+             t2_ov_facet_plot+labs(tag = "D"),
+             ncol = 2)
+dev.off()
+```
+
+## BRCA AmplificationTimeR plot 
+```{r}
+total_timing_SBS1_5_brca$highest_copy_number <- as.factor(total_timing_SBS1_5_brca$highest_copy_number)
+total_timing_SBS1_5_brca$highest_copy_number <- factor(total_timing_SBS1_5_brca$highest_copy_number,
+                                                       levels = c("1+0","1+1","2+0","2+1","2+2",
+                                                                  "3+1","3+2","4+0","4+1","4+2",
+                                                                  "4+3","4+4","5+1","5+2","5+4",
+                                                                  "6+1","6+2","6+3","6+5","7+1",
+                                                                  "7+2","8+0","8+1","8+2","8+4",
+                                                                  "8+5","10+1","10+2","11+1","11+3"))
+
+
+
+brca_ATR_plot <- ggplot(subset(total_timing_SBS1_5_brca, !is.na(t_1_mean_bootstrap)), aes(y = paste(sample, event_order)))+
+  geom_point(aes(x = t_1_mean_bootstrap, colour = "T1", size = num_mutations_used), alpha = 0.5)+
+  geom_segment(aes(x = t_1_lower_ci, xend = t_1_upper_ci, yend = paste(sample, event_order), colour = "T1"), alpha = 0.5)+
+  geom_point(aes(x = t_2_mean_bootstrap, colour = "T2", size = num_mutations_used), alpha = 0.5)+
+  geom_segment(aes(x = t_2_lower_ci, xend = t_2_upper_ci, yend = paste(sample, event_order), colour = "T2"), alpha = 0.5)+
+  geom_point(aes(x = t_3_mean_bootstrap, colour = "T3", size = num_mutations_used), alpha = 0.5)+
+  geom_segment(aes(x = t_3_lower_ci, xend = t_3_upper_ci, yend = paste(sample, event_order), colour = "T3"), alpha = 0.5)+
+  geom_point(aes(x = t_4_mean_bootstrap, colour = "T4", size = num_mutations_used), alpha = 0.5)+
+  geom_segment(aes(x = t_4_lower_ci, xend = t_4_upper_ci, yend = paste(sample, event_order), colour = "T4"), alpha = 0.5)+
+  geom_point(aes(x = t_5_mean_bootstrap, colour = "T5", size = num_mutations_used), alpha = 0.5)+
+  geom_segment(aes(x = t_5_lower_ci, xend = t_5_upper_ci, yend = paste(sample, event_order), colour = "T5"), alpha = 0.5)+
+  geom_point(aes(x = t_6_mean_bootstrap, colour = "T6", size = num_mutations_used), alpha = 0.5)+
+  geom_segment(aes(x = t_6_lower_ci, xend = t_6_upper_ci, yend = paste(sample, event_order), colour = "T6"), alpha = 0.5)+
+  geom_point(aes(x = t_7_mean_bootstrap, colour = "T7", size = num_mutations_used), alpha = 0.5)+
+  geom_segment(aes(x = t_7_lower_ci, xend = t_7_upper_ci, yend = paste(sample, event_order), colour = "T7"), alpha = 0.5)+
+  scale_colour_viridis(discrete = TRUE, end = 0.9)+
+  theme_light()+
+  xlab("Sample and Order")+
+  ylab("Time")+
+  ggtitle("Mean bootstrap timing estimate - SBS1 and SBS5 mutations")+
+  geom_vline(xintercept = 1, colour = "grey", linetype = 3)+
+  facet_grid(rows = vars(highest_copy_number), cols = vars(Tumour_type),
+             scales = "free_y", space = "free")+
+  guides(colour = guide_legend(title = "Event"))+
+  theme(strip.text.y = element_text(angle = 0), strip.text = element_text(size = 8),
+        axis.text.y = element_text(size = 6), legend.title = element_text(size = 8),
+        legend.text = element_text(size = 7), legend.key.width = unit(0.7,"cm"),
+        plot.margin = margin(t = 0.1, r = 0, b = 0, l = 0.1, unit = "cm"),
+        panel.spacing = unit(0.075, "cm"))+
+  scale_size_continuous(breaks = c(10,50,100,150,200,250), name = "Number of \n mutations")
+```
+
+## OV AmplificationTimeR plot 
+```{r}
+ov_ATR_plot <- ggplot(subset(total_timing_SBS1_5_ov, !is.na(t_1_mean_bootstrap)), aes(y = paste(sample, event_order)))+
+  geom_point(aes(x = t_1_mean_bootstrap, colour = "T1", size = num_mutations_used), alpha = 0.5)+
+  geom_segment(aes(x = t_1_lower_ci, xend = t_1_upper_ci, yend = paste(sample, event_order), colour = "T1"), alpha = 0.5)+
+  geom_point(aes(x = t_2_mean_bootstrap, colour = "T2", size = num_mutations_used), alpha = 0.5)+
+  geom_segment(aes(x = t_2_lower_ci, xend = t_2_upper_ci, yend = paste(sample, event_order), colour = "T2"), alpha = 0.5)+
+  geom_point(aes(x = t_3_mean_bootstrap, colour = "T3", size = num_mutations_used), alpha = 0.5)+
+  geom_segment(aes(x = t_3_lower_ci, xend = t_3_upper_ci, yend = paste(sample, event_order), colour = "T3"), alpha = 0.5)+
+  geom_point(aes(x = t_4_mean_bootstrap, colour = "T4", size = num_mutations_used), alpha = 0.5)+
+  geom_segment(aes(x = t_4_lower_ci, xend = t_4_upper_ci, yend = paste(sample, event_order), colour = "T4"), alpha = 0.5)+
+  geom_point(aes(x = t_5_mean_bootstrap, colour = "T5", size = num_mutations_used), alpha = 0.5)+
+  geom_segment(aes(x = t_5_lower_ci, xend = t_5_upper_ci, yend = paste(sample, event_order), colour = "T5"), alpha = 0.5)+
+  geom_point(aes(x = t_6_mean_bootstrap, colour = "T6", size = num_mutations_used), alpha = 0.5)+
+  geom_segment(aes(x = t_6_lower_ci, xend = t_6_upper_ci, yend = paste(sample, event_order), colour = "T6"), alpha = 0.5)+
+  geom_point(aes(x = as.numeric(t_7_mean_bootstrap), colour = "T7", size = num_mutations_used), alpha = 0.5)+
+  # geom_segment(aes(x = t_7_lower_ci, xend = t_7_upper_ci, yend = paste(sample, event_order), colour = "T7"), alpha = 0.5)+
+  scale_colour_viridis(discrete = TRUE, end = 0.9)+
+  theme_light()+
+  xlab("Sample and Order")+
+  ylab("Time")+
+  ggtitle("Mean bootstrap timing estimate - SBS1 and SBS5 mutations")+
+  geom_vline(xintercept = 1, colour = "grey", linetype = 3)+
+  facet_grid(rows = vars(highest_copy_number), cols = vars(Tumour_type),
+             scales = "free_y", space = "free")+
+  guides(colour = guide_legend(title = "Event"))+
+  theme(strip.text.y = element_text(angle = 0), strip.text = element_text(size = 10),
+        axis.text.y = element_text(size = 8), legend.title = element_text(size = 10),
+        legend.text = element_text(size = 8), legend.key.width = unit(0.7,"cm"),
+        axis.title = element_text(size = 12),
+        plot.margin = margin(t = 0.1, r = 0, b = 0, l = 0.1, unit = "cm"),
+        panel.spacing = unit(0.075, "cm"))+
+  scale_size_continuous(breaks = c(10,50,100,150,200,250), name = "Number of \n mutations")
+```
+
+## Save ATR plots
+
+```{r}
+png(paste0(outdir,"AmplificationTimeR_brca_time_dots_composite_facet_",Sys.Date(),".png"), 
+    res = resolution, height = figure_height, width = figure_width, units = "cm")
+brca_ATR_plot
+dev.off()
+
+png(paste0(outdir,"AmplificationTimeR_ov_time_dots_composite_facet_",Sys.Date(),".png"), 
+    res = resolution, height = figure_height, width = figure_width, units = "cm")
+ov_ATR_plot
+dev.off()
+
+```
+
+
+# Table of correlation coefficients
+```{r}
+brca_t1_correlation <- as.data.frame(matrix(nrow = 6, ncol = 5))
+colnames(brca_t1_correlation) <- c("Comparison","Mutation_type","rho","p_value","p_adj")
+brca_t1_correlation$Comparison <- c(rep("AmplificationTimeR v cancerTiming", 3),rep("AmplificationTimeR v MutationTimeR", 3))
+brca_t1_correlation$Mutation_type <- c(rep(c("All mutations","C>T at CpG","SBS1 and SBS5"),2))
+
+brca_t2_correlation <- brca_t1_correlation
+ov_t1_correlation <- brca_t1_correlation
+ov_t2_correlation <- brca_t1_correlation
+```
+
+### BRCA
+```{r}
+brca_t1_correlation$rho[1] <- cor.test(total_timing_all_muts_brca$t_1_mean_bootstrap,
+                                       total_timing_all_muts_brca$t1_tot_cancerTiming, method = "spearman")[[4]]
+brca_t1_correlation$p_value[1] <- cor.test(total_timing_all_muts_brca$t_1_mean_bootstrap,
+                                           total_timing_all_muts_brca$t1_tot_cancerTiming, method = "spearman")[[3]]
+
+brca_t1_correlation$rho[2] <- cor.test(total_timing_ctcpg_brca$t_1_mean_bootstrap,
+                                       total_timing_ctcpg_brca$t1_tot_cancerTiming, method = "spearman")[[4]]
+brca_t1_correlation$p_value[2] <- cor.test(total_timing_ctcpg_brca$t_1_mean_bootstrap,
+                                           total_timing_ctcpg_brca$t1_tot_cancerTiming, method = "spearman")[[3]]
+
+brca_t1_correlation$rho[3] <- cor.test(total_timing_SBS1_5_brca$t_1_mean_bootstrap,
+                                       total_timing_SBS1_5_brca$t1_tot_cancerTiming, method = "spearman")[[4]]
+brca_t1_correlation$p_value[3] <- cor.test(total_timing_SBS1_5_brca$t_1_mean_bootstrap,
+                                           total_timing_SBS1_5_brca$t1_tot_cancerTiming, method = "spearman")[[3]]
+
+brca_t1_correlation$rho[4] <- cor.test(total_timing_all_muts_brca$t_1_mean_bootstrap,
+                                       total_timing_all_muts_brca$time_MutationTimeR, method = "spearman")[[4]]
+brca_t1_correlation$p_value[4] <- cor.test(total_timing_all_muts_brca$t_1_mean_bootstrap,
+                                           total_timing_all_muts_brca$time_MutationTimeR, method = "spearman")[[3]]
+
+brca_t1_correlation$rho[5] <- cor.test(total_timing_ctcpg_brca$t_1_mean_bootstrap,
+                                       total_timing_ctcpg_brca$time_MutationTimeR, method = "spearman")[[4]]
+brca_t1_correlation$p_value[5] <- cor.test(total_timing_ctcpg_brca$t_1_mean_bootstrap,
+                                           total_timing_ctcpg_brca$time_MutationTimeR, method = "spearman")[[3]]
+
+brca_t1_correlation$rho[6] <- cor.test(total_timing_SBS1_5_brca$t_1_mean_bootstrap,
+                                       total_timing_SBS1_5_brca$time_MutationTimeR, method = "spearman")[[4]]
+brca_t1_correlation$p_value[6] <- cor.test(total_timing_SBS1_5_brca$t_1_mean_bootstrap,
+                                           total_timing_SBS1_5_brca$time_MutationTimeR, method = "spearman")[[3]]
+
+brca_t1_correlation$p_adj <- p.adjust(brca_t1_correlation$p_value, method = "BH")
+
+print(xtable(brca_t1_correlation, display = rep("g",6)), type = "latex")
+```
+
+```{r}
+brca_t2_correlation$rho[1] <- cor.test(total_timing_all_muts_brca$t_2_mean_bootstrap,
+                                       total_timing_all_muts_brca$t2_tot_cancerTiming, method = "spearman")[[4]]
+brca_t2_correlation$p_value[1] <- cor.test(total_timing_all_muts_brca$t_2_mean_bootstrap,
+                                           total_timing_all_muts_brca$t2_tot_cancerTiming, method = "spearman")[[3]]
+
+brca_t2_correlation$rho[2] <- cor.test(total_timing_ctcpg_brca$t_2_mean_bootstrap,
+                                       total_timing_ctcpg_brca$t2_tot_cancerTiming, method = "spearman")[[4]]
+brca_t2_correlation$p_value[2] <- cor.test(total_timing_ctcpg_brca$t_2_mean_bootstrap,
+                                           total_timing_ctcpg_brca$t2_tot_cancerTiming, method = "spearman")[[3]]
+
+brca_t2_correlation$rho[3] <- cor.test(total_timing_SBS1_5_brca$t_2_mean_bootstrap,
+                                       total_timing_SBS1_5_brca$t2_tot_cancerTiming, method = "spearman")[[4]]
+brca_t2_correlation$p_value[3] <- cor.test(total_timing_SBS1_5_brca$t_2_mean_bootstrap,
+                                           total_timing_SBS1_5_brca$t2_tot_cancerTiming, method = "spearman")[[3]]
+
+brca_t2_correlation$rho[4] <- cor.test(total_timing_all_muts_brca$t_2_mean_bootstrap,
+                                       total_timing_all_muts_brca$time.2nd_MutationTimeR, method = "spearman")[[4]]
+brca_t2_correlation$p_value[4] <- cor.test(total_timing_all_muts_brca$t_2_mean_bootstrap,
+                                           total_timing_all_muts_brca$time.2nd_MutationTimeR, method = "spearman")[[3]]
+
+brca_t2_correlation$rho[5] <- cor.test(total_timing_ctcpg_brca$t_2_mean_bootstrap,
+                                       total_timing_ctcpg_brca$time.2nd_MutationTimeR, method = "spearman")[[4]]
+brca_t2_correlation$p_value[5] <- cor.test(total_timing_ctcpg_brca$t_2_mean_bootstrap,
+                                           total_timing_ctcpg_brca$time.2nd_MutationTimeR, method = "spearman")[[3]]
+
+brca_t2_correlation$rho[6] <- cor.test(total_timing_SBS1_5_brca$t_2_mean_bootstrap,
+                                       total_timing_SBS1_5_brca$time.2nd_MutationTimeR, method = "spearman")[[4]]
+brca_t2_correlation$p_value[6] <- cor.test(total_timing_SBS1_5_brca$t_2_mean_bootstrap,
+                                           total_timing_SBS1_5_brca$time.2nd_MutationTimeR, method = "spearman")[[3]]
+
+brca_t2_correlation$p_adj <- p.adjust(brca_t2_correlation$p_value, method = "BH")
+
+print(xtable(brca_t2_correlation, display = rep("g",6)), type = "latex")
+```
+
+### OV
+```{r}
+ov_t1_correlation$rho[1] <- cor.test(total_timing_all_muts_ov$t_1_mean_bootstrap,
+                                       total_timing_all_muts_ov$t1_tot_cancerTiming, method = "spearman")[[4]]
+ov_t1_correlation$p_value[1] <- cor.test(total_timing_all_muts_ov$t_1_mean_bootstrap,
+                                           total_timing_all_muts_ov$t1_tot_cancerTiming, method = "spearman")[[3]]
+
+ov_t1_correlation$rho[2] <- cor.test(total_timing_ctcpg_ov$t_1_mean_bootstrap,
+                                       total_timing_ctcpg_ov$t1_tot_cancerTiming, method = "spearman")[[4]]
+ov_t1_correlation$p_value[2] <- cor.test(total_timing_ctcpg_ov$t_1_mean_bootstrap,
+                                           total_timing_ctcpg_ov$t1_tot_cancerTiming, method = "spearman")[[3]]
+
+ov_t1_correlation$rho[3] <- cor.test(total_timing_SBS1_5_ov$t_1_mean_bootstrap,
+                                       total_timing_SBS1_5_ov$t1_tot_cancerTiming, method = "spearman")[[4]]
+ov_t1_correlation$p_value[3] <- cor.test(total_timing_SBS1_5_ov$t_1_mean_bootstrap,
+                                           total_timing_SBS1_5_ov$t1_tot_cancerTiming, method = "spearman")[[3]]
+
+ov_t1_correlation$rho[4] <- cor.test(total_timing_all_muts_ov$t_1_mean_bootstrap,
+                                       total_timing_all_muts_ov$time_MutationTimeR, method = "spearman")[[4]]
+ov_t1_correlation$p_value[4] <- cor.test(total_timing_all_muts_ov$t_1_mean_bootstrap,
+                                           total_timing_all_muts_ov$time_MutationTimeR, method = "spearman")[[3]]
+
+ov_t1_correlation$rho[5] <- cor.test(total_timing_ctcpg_ov$t_1_mean_bootstrap,
+                                       total_timing_ctcpg_ov$time_MutationTimeR, method = "spearman")[[4]]
+ov_t1_correlation$p_value[5] <- cor.test(total_timing_ctcpg_ov$t_1_mean_bootstrap,
+                                           total_timing_ctcpg_ov$time_MutationTimeR, method = "spearman")[[3]]
+
+ov_t1_correlation$rho[6] <- cor.test(total_timing_SBS1_5_ov$t_1_mean_bootstrap,
+                                       total_timing_SBS1_5_ov$time_MutationTimeR, method = "spearman")[[4]]
+ov_t1_correlation$p_value[6] <- cor.test(total_timing_SBS1_5_ov$t_1_mean_bootstrap,
+                                           total_timing_SBS1_5_ov$time_MutationTimeR, method = "spearman")[[3]]
+
+ov_t1_correlation$p_adj <- p.adjust(ov_t1_correlation$p_value, method = "BH")
+
+print(xtable(ov_t1_correlation, display = rep("g",6)), type = "latex")
+```
+
+```{r}
+ov_t2_correlation$rho[1] <- cor.test(total_timing_all_muts_ov$t_2_mean_bootstrap,
+                                       total_timing_all_muts_ov$t2_tot_cancerTiming, method = "spearman")[[4]]
+ov_t2_correlation$p_value[1] <- cor.test(total_timing_all_muts_ov$t_2_mean_bootstrap,
+                                           total_timing_all_muts_ov$t2_tot_cancerTiming, method = "spearman")[[3]]
+
+ov_t2_correlation$rho[2] <- cor.test(total_timing_ctcpg_ov$t_2_mean_bootstrap,
+                                       total_timing_ctcpg_ov$t2_tot_cancerTiming, method = "spearman")[[4]]
+ov_t2_correlation$p_value[2] <- cor.test(total_timing_ctcpg_ov$t_2_mean_bootstrap,
+                                           total_timing_ctcpg_ov$t2_tot_cancerTiming, method = "spearman")[[3]]
+
+ov_t2_correlation$rho[3] <- cor.test(total_timing_SBS1_5_ov$t_2_mean_bootstrap,
+                                       total_timing_SBS1_5_ov$t2_tot_cancerTiming, method = "spearman")[[4]]
+ov_t2_correlation$p_value[3] <- cor.test(total_timing_SBS1_5_ov$t_2_mean_bootstrap,
+                                           total_timing_SBS1_5_ov$t2_tot_cancerTiming, method = "spearman")[[3]]
+
+ov_t2_correlation$rho[4] <- cor.test(total_timing_all_muts_ov$t_2_mean_bootstrap,
+                                       total_timing_all_muts_ov$time.2nd_MutationTimeR, method = "spearman")[[4]]
+ov_t2_correlation$p_value[4] <- cor.test(total_timing_all_muts_ov$t_2_mean_bootstrap,
+                                           total_timing_all_muts_ov$time.2nd_MutationTimeR, method = "spearman")[[3]]
+
+ov_t2_correlation$rho[5] <- cor.test(total_timing_ctcpg_ov$t_2_mean_bootstrap,
+                                       total_timing_ctcpg_ov$time.2nd_MutationTimeR, method = "spearman")[[4]]
+ov_t2_correlation$p_value[5] <- cor.test(total_timing_ctcpg_ov$t_2_mean_bootstrap,
+                                           total_timing_ctcpg_ov$time.2nd_MutationTimeR, method = "spearman")[[3]]
+
+ov_t2_correlation$rho[6] <- cor.test(total_timing_SBS1_5_ov$t_2_mean_bootstrap,
+                                       total_timing_SBS1_5_ov$time.2nd_MutationTimeR, method = "spearman")[[4]]
+ov_t2_correlation$p_value[6] <- cor.test(total_timing_SBS1_5_ov$t_2_mean_bootstrap,
+                                           total_timing_SBS1_5_ov$time.2nd_MutationTimeR, method = "spearman")[[3]]
+
+ov_t2_correlation$p_adj <- p.adjust(ov_t2_correlation$p_value, method = "BH")
+
+print(xtable(ov_t2_correlation, display = rep("g",6)), type = "latex")
+```
+
+# Comparing mutation types
+## BRCA
+```{r}
+brca_timing_types <- merge(AmplificationTimeR_all_muts_brca[,c("sample","region","highest_copy_number","event_order","num_mutations_used",
+                                                               "t_1", "t_1_mean_bootstrap","t_1_lower_ci","t_1_upper_ci",
+                                                               "t_2", "t_2_mean_bootstrap","t_2_lower_ci","t_2_upper_ci")],
+                           AmplificationTimeR_SBS1_5_brca[,c("sample","region","highest_copy_number","event_order","num_mutations_used",
+                                                               "t_1", "t_1_mean_bootstrap","t_1_lower_ci","t_1_upper_ci",
+                                                               "t_2", "t_2_mean_bootstrap","t_2_lower_ci","t_2_upper_ci")],
+                           by = c("sample","region","highest_copy_number"),
+                           suffixes = c("_all_muts","_sbs1_5"))
+
+brca_timing_types <- merge(brca_timing_types,
+                           AmplificationTimeR_ctcpg_brca[,c("sample","region","highest_copy_number","event_order","num_mutations_used",
+                                                               "t_1", "t_1_mean_bootstrap","t_1_lower_ci","t_1_upper_ci",
+                                                               "t_2", "t_2_mean_bootstrap","t_2_lower_ci","t_2_upper_ci")],
+                           by = c("sample","region","highest_copy_number"))
+
+colnames(brca_timing_types)[24:33] <- paste0(colnames(brca_timing_types)[24:33],"_ctcpg")
+```
+
+```{r}
+brca_all_sbs_plot <- ggplot(brca_timing_types, aes(x = t_1_mean_bootstrap_all_muts,
+                              xmin = t_1_lower_ci_all_muts, xmax = t_1_upper_ci_all_muts,
+                              y = t_1_mean_bootstrap_sbs1_5,
+                              ymin = t_1_lower_ci_sbs1_5, ymax = t_1_upper_ci_sbs1_5,
+                              colour = (num_mutations_used_sbs1_5/num_mutations_used_all_muts)))+
+  geom_pointrange(alpha = 0.5, size = 0.1)+
+  geom_abline(slope = 1, intercept = 0)+
+  geom_errorbarh(aes(xmax = t_1_upper_ci_all_muts, xmin = t_1_lower_ci_all_muts, height = 0))+
+  theme_light()+
+  ggtitle("BRCA - t1")+
+  theme(legend.text = element_text(size = 4),
+        axis.text.x = element_text(size = 6),
+        axis.text.y = element_text(size = 6),
+        axis.title = element_text(size = 8),
+        legend.position = "bottom",
+        legend.title = element_text(size = 6),
+        legend.key.width = unit(0.5, "cm"),
+        legend.key.height = unit(0.1, "cm"),
+        plot.title = element_text(size = 8, hjust = 0.5),
+        plot.margin = margin(t = 0, r = 0.1, b = 0.1, l = 0, unit = "cm"))+
+  scale_colour_viridis(name = "SBS1&5 / All")+
+  xlab("All Mutations")+
+  ylab("SBS1 and SBS5")
+  
+brca_all_sbs_plot
+```
+
+Mean difference.  >0 means all mutations overestimates, <0 means all mutations underestimates
+```{r}
+mean(brca_timing_types$t_1_mean_bootstrap_all_muts - brca_timing_types$t_1_mean_bootstrap_sbs1_5, na.rm = TRUE)
+```
+
+```{r}
+wilcox.test(brca_timing_types$t_1_mean_bootstrap_all_muts,
+            brca_timing_types$t_1_mean_bootstrap_sbs1_5,
+            paired = TRUE)
+```
+
+
+
+```{r}
+cor.test(brca_timing_types$t_1_mean_bootstrap_all_muts, brca_timing_types$t_1_mean_bootstrap_sbs1_5, method = "spearman")
+```
+
+
+```{r}
+brca_all_ctcpg_plot <- ggplot(brca_timing_types, aes(x = t_1_mean_bootstrap_all_muts,
+                              xmin = t_1_lower_ci_all_muts, xmax = t_1_upper_ci_all_muts,
+                              y = t_1_mean_bootstrap_ctcpg,
+                              ymin = t_1_lower_ci_ctcpg, ymax = t_1_upper_ci_ctcpg,
+                              colour = (num_mutations_used_ctcpg/num_mutations_used_all_muts)))+
+  geom_pointrange(alpha = 0.5, size = 0.1)+
+  geom_abline(slope = 1, intercept = 0)+
+  geom_errorbarh(aes(xmax = t_1_upper_ci_all_muts, xmin = t_1_lower_ci_all_muts, height = 0))+
+  theme_light()+
+  ggtitle("BRCA - t1")+
+  theme(legend.text = element_text(size = 4),
+        axis.text.x = element_text(size = 6),
+        axis.text.y = element_text(size = 6),
+        axis.title = element_text(size = 8),
+        legend.position = "bottom",
+        legend.title = element_text(size = 6),
+        legend.key.width = unit(0.5, "cm"),
+        legend.key.height = unit(0.1, "cm"),
+        plot.title = element_text(size = 8, hjust = 0.5),
+        plot.margin = margin(t = 0, r = 0.1, b = 0.1, l = 0, unit = "cm"))+
+  scale_colour_viridis(name = "SBS1&5 / All")+
+  scale_colour_viridis(name = "C>T CpG / All")+
+  xlab("All Mutations")+
+  ylab("C>T at CpG")
+  
+brca_all_ctcpg_plot
+```
+```{r}
+cor.test(brca_timing_types$t_1_mean_bootstrap_all_muts, brca_timing_types$t_1_mean_bootstrap_ctcpg, method = "spearman")
+```
+
+```{r}
+mean(brca_timing_types$t_1_mean_bootstrap_all_muts - brca_timing_types$t_1_mean_bootstrap_ctcpg, na.rm = TRUE)
+```
+
+
+```{r}
+brca_ctcpg_sbs_plot <- ggplot(brca_timing_types, aes(x = t_1_mean_bootstrap_sbs1_5,
+                              xmin = t_1_lower_ci_sbs1_5, xmax = t_1_upper_ci_sbs1_5,
+                              y = t_1_mean_bootstrap_ctcpg,
+                              ymin = t_1_lower_ci_ctcpg, ymax = t_1_upper_ci_ctcpg,
+                              colour = (num_mutations_used_ctcpg/num_mutations_used_sbs1_5)))+
+  geom_pointrange(alpha = 0.5, size = 0.1)+
+  geom_abline(slope = 1, intercept = 0)+
+  geom_errorbarh(aes(xmax = t_1_upper_ci_sbs1_5, xmin = t_1_lower_ci_sbs1_5, height = 0))+
+  theme_light()+
+  ggtitle("BRCA - t1")+
+  theme(legend.text = element_text(size = 4),
+        axis.text.x = element_text(size = 6),
+        axis.text.y = element_text(size = 6),
+        axis.title = element_text(size = 8),
+        legend.position = "bottom",
+        legend.title = element_text(size = 6),
+        legend.key.width = unit(0.5, "cm"),
+        legend.key.height = unit(0.1, "cm"),
+        plot.title = element_text(size = 8, hjust = 0.5),
+        plot.margin = margin(t = 0, r = 0.1, b = 0.1, l = 0, unit = "cm"))+
+  scale_colour_viridis(name = "SBS1&5 / All")+
+  scale_colour_viridis(name = "C>T CpG / SBS1&5")+
+  xlab("SBS1 and SBS5")+
+  ylab("C>T at CpG")
+  
+brca_ctcpg_sbs_plot
+```
+```{r}
+cor.test(brca_timing_types$t_1_mean_bootstrap_sbs1_5, brca_timing_types$t_1_mean_bootstrap_ctcpg, method = "spearman")
+```
+
+```{r}
+mean(brca_timing_types$t_1_mean_bootstrap_ctcpg - brca_timing_types$t_1_mean_bootstrap_sbs1_5, na.rm = TRUE)
+```
+
+## OV
+```{r}
+ov_timing_types <- merge(AmplificationTimeR_all_muts_ov[,c("sample","region","highest_copy_number","event_order","num_mutations_used",
+                                                               "t_1", "t_1_mean_bootstrap","t_1_lower_ci","t_1_upper_ci",
+                                                               "t_2", "t_2_mean_bootstrap","t_2_lower_ci","t_2_upper_ci")],
+                           AmplificationTimeR_SBS1_5_ov[,c("sample","region","highest_copy_number","event_order","num_mutations_used",
+                                                               "t_1", "t_1_mean_bootstrap","t_1_lower_ci","t_1_upper_ci",
+                                                               "t_2", "t_2_mean_bootstrap","t_2_lower_ci","t_2_upper_ci")],
+                           by = c("sample","region","highest_copy_number"),
+                           suffixes = c("_all_muts","_sbs1_5"))
+
+ov_timing_types <- merge(ov_timing_types,
+                           AmplificationTimeR_ctcpg_ov[,c("sample","region","highest_copy_number","event_order","num_mutations_used",
+                                                               "t_1", "t_1_mean_bootstrap","t_1_lower_ci","t_1_upper_ci",
+                                                               "t_2", "t_2_mean_bootstrap","t_2_lower_ci","t_2_upper_ci")],
+                           by = c("sample","region","highest_copy_number"))
+
+colnames(ov_timing_types)[24:33] <- paste0(colnames(ov_timing_types)[24:33],"_ctcpg")
+```
+
+```{r}
+ov_all_sbs_plot <- ggplot(ov_timing_types, aes(x = t_1_mean_bootstrap_all_muts,
+                              xmin = t_1_lower_ci_all_muts, xmax = t_1_upper_ci_all_muts,
+                              y = t_1_mean_bootstrap_sbs1_5,
+                              ymin = t_1_lower_ci_sbs1_5, ymax = t_1_upper_ci_sbs1_5,
+                              colour = (num_mutations_used_sbs1_5/num_mutations_used_all_muts)))+
+  geom_pointrange(alpha = 0.5, size = 0.1)+
+  geom_abline(slope = 1, intercept = 0)+
+  geom_errorbarh(aes(xmax = t_1_upper_ci_all_muts, xmin = t_1_lower_ci_all_muts, height = 0))+
+  theme_light()+
+  ggtitle("OV - t1")+
+  theme(legend.text = element_text(size = 4),
+        axis.text.x = element_text(size = 6),
+        axis.text.y = element_text(size = 6),
+        axis.title = element_text(size = 8),
+        legend.position = "bottom",
+        legend.title = element_text(size = 6),
+        legend.key.width = unit(0.5, "cm"),
+        legend.key.height = unit(0.1, "cm"),
+        plot.title = element_text(size = 8, hjust = 0.5),
+        plot.margin = margin(t = 0, r = 0.1, b = 0.1, l = 0, unit = "cm"))+
+  scale_colour_viridis(name = "SBS1&5 / All")+
+  scale_colour_viridis(name = "SBS1&5 / All")+
+  xlab("All Mutations")+
+  ylab("SBS1 and SBS5")
+  
+ov_all_sbs_plot 
+```
+
+```{r}
+cor.test(ov_timing_types$t_1_mean_bootstrap_all_muts, ov_timing_types$t_1_mean_bootstrap_sbs1_5, method = "spearman")
+```
+
+```{r}
+mean(ov_timing_types$t_1_mean_bootstrap_all_muts - ov_timing_types$t_1_mean_bootstrap_sbs1_5, na.rm = TRUE)
+```
+
+
+```{r}
+ov_all_ctcpg_plot <- ggplot(ov_timing_types, aes(x = t_1_mean_bootstrap_all_muts,
+                              xmin = t_1_lower_ci_all_muts, xmax = t_1_upper_ci_all_muts,
+                              y = t_1_mean_bootstrap_ctcpg,
+                              ymin = t_1_lower_ci_ctcpg, ymax = t_1_upper_ci_ctcpg,
+                              colour = (num_mutations_used_ctcpg/num_mutations_used_all_muts)))+
+  geom_pointrange(alpha = 0.5, size = 0.1)+
+  geom_abline(slope = 1, intercept = 0)+
+  geom_errorbarh(aes(xmax = t_1_upper_ci_all_muts, xmin = t_1_lower_ci_all_muts, height = 0))+
+  theme_light()+
+  ggtitle("OV - t1")+
+  theme(legend.text = element_text(size = 4),
+        axis.text.x = element_text(size = 6),
+        axis.text.y = element_text(size = 6),
+        axis.title = element_text(size = 8),
+        legend.position = "bottom",
+        legend.title = element_text(size = 6),
+        legend.key.width = unit(0.5, "cm"),
+        legend.key.height = unit(0.1, "cm"),
+        plot.title = element_text(size = 8, hjust = 0.5),
+        plot.margin = margin(t = 0, r = 0.1, b = 0.1, l = 0, unit = "cm"))+
+  scale_colour_viridis(name = "SBS1&5 / All")+
+  scale_colour_viridis(name = "C>T CpG / All")+
+  xlab("All Mutations")+
+  ylab("C>T at CpG")
+  
+ov_all_ctcpg_plot 
+```
+```{r}
+cor.test(ov_timing_types$t_1_mean_bootstrap_all_muts, ov_timing_types$t_1_mean_bootstrap_ctcpg, method = "spearman")
+```
+
+```{r}
+mean(ov_timing_types$t_1_mean_bootstrap_all_muts - ov_timing_types$t_1_mean_bootstrap_ctcpg, na.rm = TRUE)
+```
+
+```{r}
+ov_ctcpg_sbs_plot <- ggplot(ov_timing_types, aes(x = t_1_mean_bootstrap_sbs1_5,
+                              xmin = t_1_lower_ci_sbs1_5, xmax = t_1_upper_ci_sbs1_5,
+                              y = t_1_mean_bootstrap_ctcpg,
+                              ymin = t_1_lower_ci_ctcpg, ymax = t_1_upper_ci_ctcpg,
+                              colour = (num_mutations_used_ctcpg/num_mutations_used_sbs1_5)))+
+  geom_pointrange(alpha = 0.5, size = 0.1)+
+  geom_abline(slope = 1, intercept = 0)+
+  geom_errorbarh(aes(xmax = t_1_upper_ci_sbs1_5, xmin = t_1_lower_ci_sbs1_5, height = 0))+
+  theme_light()+
+  ggtitle("OV - t1")+
+  theme(legend.text = element_text(size = 4),
+        axis.text.x = element_text(size = 6),
+        axis.text.y = element_text(size = 6),
+        axis.title = element_text(size = 8),
+        legend.position = "bottom",
+        legend.title = element_text(size = 6),
+        legend.key.width = unit(0.5, "cm"),
+        legend.key.height = unit(0.1, "cm"),
+        plot.title = element_text(size = 8, hjust = 0.5),
+        plot.margin = margin(t = 0, r = 0.1, b = 0.1, l = 0, unit = "cm"))+
+  scale_colour_viridis(name = "SBS1&5 / All")+
+  scale_colour_viridis(name = "C>T CpG / SBS1&5")+
+  xlab("SBS1 and SBS5")+
+  ylab("C>T at CpG")
+  
+ov_ctcpg_sbs_plot
+```
+```{r}
+cor.test(ov_timing_types$t_1_mean_bootstrap_sbs1_5, ov_timing_types$t_1_mean_bootstrap_ctcpg, method = "spearman")
+```
+
+```{r}
+mean(ov_timing_types$t_1_mean_bootstrap_ctcpg - ov_timing_types$t_1_mean_bootstrap_sbs1_5, na.rm = TRUE)
+```
+
+## Composite plot
+```{r}
+png(paste0(outdir,
+           "mutation_type_comparisons_brca_ov_",Sys.Date(),".png"),
+    res = resolution, height = 12, width = figure_width, units = "cm")
+grid.arrange(brca_all_sbs_plot+labs(tag = "A"), 
+             brca_all_ctcpg_plot+labs(tag = "B"), 
+             brca_ctcpg_sbs_plot+labs(tag = "C"),
+             ov_all_sbs_plot+labs(tag = "D"), 
+             ov_all_ctcpg_plot+labs(tag = "E"), 
+             ov_ctcpg_sbs_plot+labs(tag = "F"),
+             nrow = 2, ncol = 3)
+dev.off()
+```
+
+## Stats
+```{r}
+paired_wilcox_timing_type <- as.data.frame(matrix(nrow = 6, ncol = 3))
+colnames(paired_wilcox_timing_type) <- c("Comparison","p_val","p_adj")
+
+paired_wilcox_timing_type$Comparison <- c("BRCA - All vs SBS",
+                                          "BRCA - All vs C>T",
+                                          "BRCA - C>T vs SBS",
+                                          "OV - All vs SBS",
+                                          "OV - All vs C>T",
+                                          "OV - C>T vs SBS")
+
+paired_wilcox_timing_type$p_val[1] <- wilcox.test(brca_timing_types$t_1_mean_bootstrap_all_muts,
+                                                  brca_timing_types$t_1_mean_bootstrap_sbs1_5, 
+                                                  paired = TRUE)[[3]]
+paired_wilcox_timing_type$p_val[2] <- wilcox.test(brca_timing_types$t_1_mean_bootstrap_all_muts,
+                                                  brca_timing_types$t_1_mean_bootstrap_ctcpg, 
+                                                  paired = TRUE)[[3]]
+paired_wilcox_timing_type$p_val[3] <- wilcox.test(brca_timing_types$t_1_mean_bootstrap_sbs1_5,
+                                                  brca_timing_types$t_1_mean_bootstrap_ctcpg, 
+                                                  paired = TRUE)[[3]]
+paired_wilcox_timing_type$p_val[4] <- wilcox.test(ov_timing_types$t_1_mean_bootstrap_all_muts,
+                                                  ov_timing_types$t_1_mean_bootstrap_sbs1_5, 
+                                                  paired = TRUE)[[3]]
+paired_wilcox_timing_type$p_val[5] <- wilcox.test(ov_timing_types$t_1_mean_bootstrap_all_muts,
+                                                  ov_timing_types$t_1_mean_bootstrap_ctcpg, 
+                                                  paired = TRUE)[[3]]
+paired_wilcox_timing_type$p_val[6] <- wilcox.test(ov_timing_types$t_1_mean_bootstrap_sbs1_5,
+                                                  ov_timing_types$t_1_mean_bootstrap_ctcpg, 
+                                                  paired = TRUE)[[3]]
+
+paired_wilcox_timing_type$p_adj[1:3] <- p.adjust(paired_wilcox_timing_type$p_val[1:3], method = "BH")
+paired_wilcox_timing_type$p_adj[4:6] <- p.adjust(paired_wilcox_timing_type$p_val[4:6], method = "BH")
+```
+```{r}
+paired_wilcox_timing_type
+```
+
+```{r}
+print(xtable(paired_wilcox_timing_type,  type = "latex", display = c("g","g","g","g"), digits = 3))
+```
+
+# Other - Comparing to MYC
+## BRCA
+Combining with clinical data and gain calls
+```{r}
+clinical_and_gains <- merge(clinical, myc_gains, 
+                            by.x = c("icgc_donor_id"),
+                            by.y = c("icgc_donor_id"))
+
+AT_SBS1_5_brca_dat <- merge(AmplificationTimeR_SBS1_5_brca, samples_brca,
+                            by.x = c("tumor_wgs_aliquot_id"),
+                            by.y = c("tumor_wgs_aliquot_id"))
+AT_SBS1_5_brca_dat_clinical <- merge(AT_SBS1_5_brca_dat, 
+                                     subset(clinical_and_gains, project_code %in% c("BRCA-EU", "BRCA-UK", "BRCA-US")),
+                                     by.x = c("icgc_donor_id.x","tumor_wgs_aliquot_id"),
+                                     by.y = c("icgc_donor_id","tumor_wgs_aliquot_id"), all.y = TRUE)
+```
+
+```{r}
+AT_SBS1_5_brca_dat_clinical$Total_MYC_CN <- NA
+AT_SBS1_5_brca_dat_clinical$highest_gain2 <- AT_SBS1_5_brca_dat_clinical$highest_copy_number
+AT_SBS1_5_brca_dat_clinical <- separate(AT_SBS1_5_brca_dat_clinical, highest_gain2, into = c("major_cn","minor_cn"), sep = "\\+")
+AT_SBS1_5_brca_dat_clinical$Total_MYC_CN <- as.numeric(AT_SBS1_5_brca_dat_clinical$major_cn) + as.numeric(AT_SBS1_5_brca_dat_clinical$minor_cn)
+```
+
+```{r}
+dim(AT_SBS1_5_brca_dat_clinical)
+dim(subset(AT_SBS1_5_brca_dat_clinical, wgd_status.x == "wgd" & !is.na(t_1_mean_bootstrap)))
+dim(subset(AT_SBS1_5_brca_dat_clinical, wgd_status.x == "no_wgd" & !is.na(t_1_mean_bootstrap)))
+```
+
+
+Correlation between MYC copy number and timing
+```{r}
+cor.test(subset(AT_SBS1_5_brca_dat_clinical, wgd_status.x == "wgd")[,c("Total_MYC_CN")],
+         subset(AT_SBS1_5_brca_dat_clinical, wgd_status.x == "wgd")[,c("t_1_mean_bootstrap")],
+         method = "spearman")
+cor.test(subset(AT_SBS1_5_brca_dat_clinical, wgd_status.x == "no_wgd")[,c("Total_MYC_CN")],
+         subset(AT_SBS1_5_brca_dat_clinical, wgd_status.x == "no_wgd")[,c("t_1_mean_bootstrap")],
+         method = "spearman")
+```
+
+## OV
+```{r}
+AT_SBS1_5_ov_dat <- merge(AmplificationTimeR_SBS1_5_ov, samples_ov,
+                            by.x = c("tumor_wgs_aliquot_id"),
+                            by.y = c("tumor_wgs_aliquot_id"))
+
+AT_SBS1_5_ov_dat_clinical <- merge(AT_SBS1_5_ov_dat, 
+                                     subset(clinical_and_gains, project_code %in% c("OV-AU", "OV-US")),
+                                     by.x = c("icgc_donor_id.x","tumor_wgs_aliquot_id"),
+                                     by.y = c("icgc_donor_id","tumor_wgs_aliquot_id"), all.y = TRUE)
+
+```
+
+```{r}
+AT_SBS1_5_ov_dat_clinical$Total_MYC_CN <- NA
+AT_SBS1_5_ov_dat_clinical$highest_gain2 <- AT_SBS1_5_ov_dat_clinical$highest_gain
+AT_SBS1_5_ov_dat_clinical <- separate(AT_SBS1_5_ov_dat_clinical, highest_gain2, into = c("major_cn","minor_cn"), sep = "\\+")
+AT_SBS1_5_ov_dat_clinical$Total_MYC_CN <- as.numeric(AT_SBS1_5_ov_dat_clinical$major_cn) + as.numeric(AT_SBS1_5_ov_dat_clinical$minor_cn)
+```
+
+```{r}
+dim(AT_SBS1_5_ov_dat_clinical)
+dim(subset(AT_SBS1_5_ov_dat_clinical, wgd_status.x == "wgd" & !is.na(t_1_mean_bootstrap)))
+dim(subset(AT_SBS1_5_ov_dat_clinical, wgd_status.x == "no_wgd" & !is.na(t_1_mean_bootstrap)))
+```
+
+Correlation between MYC copy number and timing
+```{r}
+cor.test(subset(AT_SBS1_5_ov_dat_clinical, wgd_status.x == "wgd")[,c("Total_MYC_CN")],
+         subset(AT_SBS1_5_ov_dat_clinical, wgd_status.x == "wgd")[,c("t_1_mean_bootstrap")],
+         method = "spearman")
+cor.test(subset(AT_SBS1_5_ov_dat_clinical, wgd_status.x == "no_wgd")[,c("Total_MYC_CN")],
+         subset(AT_SBS1_5_ov_dat_clinical, wgd_status.x == "no_wgd")[,c("t_1_mean_bootstrap")],
+         method = "spearman")
+```
+
+# Other - Comparing to mutation numbers
+## BRCA
+```{r}
+AT_SBS1_5_brca_dat_sbs <- merge(AT_SBS1_5_brca_dat, sbs_total, by.x = "tumor_wgs_icgc_specimen_id", by.y = "Sample.Names")
+```
+```{r}
+AT_SBS1_5_brca_dat_sbs$SBS1_5 <- AT_SBS1_5_brca_dat_sbs$SBS1+AT_SBS1_5_brca_dat_sbs$SBS5
+```
+
+```{r}
+dim(AT_SBS1_5_brca_dat_sbs)
+dim(subset(AT_SBS1_5_brca_dat_sbs, wgd_status == "wgd" & !is.na(t_1_mean_bootstrap)))
+dim(subset(AT_SBS1_5_brca_dat_sbs, wgd_status == "no_wgd" & !is.na(t_1_mean_bootstrap)))
+```
+
+```{r}
+cor.test(AT_SBS1_5_brca_dat_sbs$t_1_mean_bootstrap, AT_SBS1_5_brca_dat_sbs$SBS1_5, method = "spearman")
+
+cor.test(subset(AT_SBS1_5_brca_dat_sbs, wgd_status == "wgd")[,c("t_1_mean_bootstrap")],
+         subset(AT_SBS1_5_brca_dat_sbs, wgd_status == "wgd")[,c("SBS1_5")],
+         method = "spearman")
+
+cor.test(subset(AT_SBS1_5_brca_dat_sbs, wgd_status == "no_wgd")[,c("t_1_mean_bootstrap")],
+         subset(AT_SBS1_5_brca_dat_sbs, wgd_status == "no_wgd")[,c("SBS1_5")],
+         method = "spearman")
+```
+
+## OV
+```{r}
+AT_SBS1_5_ov_dat_sbs <- merge(AT_SBS1_5_ov_dat, sbs_total, by.x = "tumor_wgs_icgc_specimen_id", by.y = "Sample.Names")
+```
+```{r}
+AT_SBS1_5_ov_dat_sbs$SBS1_5 <- AT_SBS1_5_ov_dat_sbs$SBS1+AT_SBS1_5_ov_dat_sbs$SBS5
+```
+
+```{r}
+dim(AT_SBS1_5_ov_dat_sbs)
+dim(subset(AT_SBS1_5_ov_dat_sbs, wgd_status == "wgd" & !is.na(t_1_mean_bootstrap)))
+dim(subset(AT_SBS1_5_ov_dat_sbs, wgd_status == "no_wgd" & !is.na(t_1_mean_bootstrap)))
+```
+
+```{r}
+cor.test(AT_SBS1_5_ov_dat_sbs$t_1_mean_bootstrap, AT_SBS1_5_ov_dat_sbs$SBS1_5, method = "spearman")
+
+cor.test(subset(AT_SBS1_5_ov_dat_sbs, wgd_status == "wgd")[,c("t_1_mean_bootstrap")],
+         subset(AT_SBS1_5_ov_dat_sbs, wgd_status == "wgd")[,c("SBS1_5")],
+         method = "spearman")
+
+cor.test(subset(AT_SBS1_5_ov_dat_sbs, wgd_status == "no_wgd")[,c("t_1_mean_bootstrap")],
+         subset(AT_SBS1_5_ov_dat_sbs, wgd_status == "no_wgd")[,c("SBS1_5")],
+         method = "spearman")
+```
+
+
+
+# Session info
+```{r}
+sessionInfo()
+```
+
+Save session info
+```{r}
+writeLines(capture.output(sessionInfo()),
+           paste0(outdir,"AmplificationTimeR_plotting_PCAWG_data_sessionInfo_",Sys.Date(),".txt"))
+```

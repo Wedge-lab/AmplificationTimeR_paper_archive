@@ -1,0 +1,630 @@
+---
+title: "Plotting output of simulations run on CSF3 on 05-08.01.24"
+author: "Maria Jakobsdottir"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: html_notebook
+---
+
+# Libraries
+```{r}
+library(ggplot2)
+library(viridis)
+library(pheatmap)
+library(grid)
+library(gridExtra)
+```
+
+# Data
+## Parameters
+Directories used:
+```{r}
+outdir <- "/mnt/bmh01-rds/UoOxford_David_W/b05055gj/AmplificationTimeR_synthetic_tests/multinomial_sampled_data/final_figures/"
+results_dir <- "/mnt/bmh01-rds/UoOxford_David_W/b05055gj/AmplificationTimeR_synthetic_tests/multinomial_sampled_data/"
+```
+
+Experimental parameters:
+```{r}
+state_timing_replicates <- 100 # number of replicates for error vs mut number
+n_replicates_clocklike <- 100 # number of replicates for error vs clocklike
+n_mutations_clocklike_test <- 100 # number of mutations used for clocklike assessment
+n_replicates_mismatched <- 100 # number of replicates for timing with different equations
+n_mutations_mismatched <- 100 # number of mutations used for timing with different equations
+data_type <- "multinomial"
+```
+
+Output figure parameters:
+```{r}
+figure_height <- 22.5
+figure_width <- 17.8
+figure_width_half <- 8.6
+resolution <- 350
+```
+
+## Multinomial simulated data
+```{r}
+# Mutation number
+multinomial_mutation_number_and_accuracy <- read.delim(paste0(results_dir,"Error_vs_mutation_number/mutation_number_and_error_rate_100_replicates_multinomial_sampled_data_2024-01-07.txt"), sep = "\t", header = TRUE, row.names = 1)
+multinomial_mutation_number_and_number_correct_order <- read.delim(paste0(results_dir,"Error_vs_mutation_number/mutation_number_and_correct_order_100_replicates_multinomial_sampled_data_2024-01-07.txt"), sep = "\t", header = TRUE, row.names = 1)
+
+# Clocklike proportion
+multinomial_clocklike_proportions_and_accuracy <- read.delim(paste0(results_dir,"Error_vs_proportion_clocklike/clocklike_proportion_and_error_rate_100_replicates100_mutations_multinomial_sampled_data_2024-01-08.txt"), sep = "\t", header = TRUE, row.names = 1)
+multinomial_clocklike_proportions_and_number_correct_order <- read.delim(paste0(results_dir,"Error_vs_proportion_clocklike/clocklike_proportion_and_correct_order_100_replicates100_mutations_multinomial_sampled_data_2024-01-08.txt"), sep = "\t", header = TRUE, row.names = 1)
+```
+
+# Multinomial simulated data plots
+## Mutation Number
+### Error rate v mutation number
+```{r}
+colnames(multinomial_mutation_number_and_accuracy) <- gsub("X","",colnames(multinomial_mutation_number_and_accuracy))
+plot_multinomial_mutation_number_and_accuracy <- as.matrix(multinomial_mutation_number_and_accuracy)
+rownames(plot_multinomial_mutation_number_and_accuracy) <- rownames(multinomial_mutation_number_and_accuracy)
+```
+```{r}
+png(paste0(outdir,"mutation_number_and_error_rate_",
+                                                 state_timing_replicates,"_replicates",
+                                                 "_","multinomial_data","_",
+                                                 Sys.Date(),".png"),
+    height = figure_height, width = figure_width, res = resolution, units = "cm")
+setHook("grid.newpage", function() pushViewport(viewport(x=1,y=1,width=0.9, height=0.95, name="vp", just=c("right","top"))), action="prepend")
+pheatmap(plot_multinomial_mutation_number_and_accuracy, 
+        cluster_rows = FALSE, cluster_cols = FALSE,
+        # col = viridis(100),
+        color = c(viridis(100), viridis(100)[100]),
+        breaks = c(0:100,max(plot_multinomial_mutation_number_and_accuracy)),
+        main = paste0("Average error rate (%) of timing (n=",state_timing_replicates,") - ","Multinomial Simulated Data"),
+        xlab = "Number of mutations simulated",
+        ylab = "Copy number state and order",
+        border_color = NA,
+        scale = "none",
+        fontsize_row = 7)
+setHook("grid.newpage", NULL, "replace")
+grid.text("Number of mutations simulated", y=-0.02, gp=gpar(fontsize=16))
+grid.text("Copy number state and order", x=-0.07, rot=90, gp=gpar(fontsize=16))
+dev.off()
+```
+
+### Correct orders v mutation number
+```{r fig.height=10}
+colnames(multinomial_mutation_number_and_number_correct_order) <- gsub("X","",colnames(multinomial_mutation_number_and_number_correct_order))
+plot_multinomial_mutation_number_and_number_correct_order <- as.matrix(multinomial_mutation_number_and_number_correct_order)
+rownames(plot_multinomial_mutation_number_and_number_correct_order) <- rownames(multinomial_mutation_number_and_number_correct_order)
+```
+```{r fig.height=12}
+png(paste0(outdir,
+                                                 "mutation_number_and_correct_order_",
+                                                 state_timing_replicates,"_replicates",
+                                                 "_","multinomial_Data","_",
+                                                 Sys.Date(),".png"),
+    height = figure_height, width = figure_width, res = resolution, units = "cm")
+setHook("grid.newpage", function() pushViewport(viewport(x=1,y=1,width=0.9, height=0.95, name="vp", just=c("right","top"))), action="prepend")
+pheatmap(plot_multinomial_mutation_number_and_number_correct_order, 
+        cluster_rows = FALSE, cluster_cols = FALSE,
+        col = viridis(100),
+        main = paste0("Number of correct timing orders (n=",state_timing_replicates,") - ","Multinomial Simulated Data"),
+        border_color = NA,
+        scale = "none",
+        fontsize_row = 7)
+setHook("grid.newpage", NULL, "replace")
+grid.text("Number of mutations simulated", y=-0.02, gp=gpar(fontsize=16))
+grid.text("Copy number state and order", x=-0.07, rot=90, gp=gpar(fontsize=16))
+dev.off()
+```
+
+
+## Clocklike proportion
+### Error rate v clocklike proportion
+```{r}
+colnames(multinomial_clocklike_proportions_and_accuracy) <- gsub("X","",colnames(multinomial_clocklike_proportions_and_accuracy))
+plot_multinomial_clocklike_proportions_and_accuracy <- as.matrix(multinomial_clocklike_proportions_and_accuracy)
+rownames(plot_multinomial_clocklike_proportions_and_accuracy) <- rownames(multinomial_clocklike_proportions_and_accuracy)
+```
+```{r}
+png(paste0(outdir,
+                                                 "clocklike_proportion_and_error_rate_",
+                                                 n_replicates_clocklike,"_replicates",
+                                                 n_mutations_clocklike_test,"_mutations",
+                                                 "_","multinomial_data","_",
+                                                 Sys.Date(),".png"),
+    height = figure_height, width = figure_width, res = resolution, units = "cm")
+setHook("grid.newpage", function() pushViewport(viewport(x=1,y=1,width=0.9, height=0.95, name="vp", just=c("right","top"))), action="prepend")
+pheatmap(plot_multinomial_clocklike_proportions_and_accuracy, 
+        cluster_rows = FALSE, cluster_cols = FALSE,
+        # col = viridis(100),
+        color = c(viridis(100), viridis(100)[100]),
+        breaks = c(0:100,max(plot_multinomial_clocklike_proportions_and_accuracy)),
+        main = paste0("Average error rate (%) of timing (n=",state_timing_replicates,") - ","Multinomial Simulated Data"),
+        xlab = "Proportion of clocklike mutations simulated",
+        ylab = "Copy number state and order",
+        border_color = NA,
+        scale = "none",
+        fontsize_row = 7)
+setHook("grid.newpage", NULL, "replace")
+grid.text("Proportion of clocklike mutations simulated", y=-0.02, gp=gpar(fontsize=16))
+grid.text("Copy number state and order", x=-0.07, rot=90, gp=gpar(fontsize=16))
+dev.off()
+```
+
+### Correct orders v clocklike proportion
+```{r fig.height=10}
+colnames(multinomial_clocklike_proportions_and_number_correct_order) <- gsub("X","",colnames(multinomial_clocklike_proportions_and_number_correct_order))
+plot_multinomial_clocklike_proportions_and_number_correct_order <- as.matrix(multinomial_clocklike_proportions_and_number_correct_order)
+rownames(plot_multinomial_clocklike_proportions_and_number_correct_order) <- rownames(multinomial_clocklike_proportions_and_number_correct_order)
+```
+```{r fig.height=12}
+png(paste0(outdir,
+                                                 "clocklike_proportion_and_correct_order_",
+                                                 n_replicates_clocklike,"_replicates",
+                                                 n_mutations_clocklike_test,"_mutations",
+                                                 "_","multinomial_data","_",
+                                                 Sys.Date(),".png"),
+    height = figure_height, width = figure_width, res = resolution, units = "cm")
+setHook("grid.newpage", function() pushViewport(viewport(x=1,y=1,width=0.9, height=0.95, name="vp", just=c("right","top"))), action="prepend")
+pheatmap(plot_multinomial_clocklike_proportions_and_number_correct_order, 
+        cluster_rows = FALSE, cluster_cols = FALSE,
+        col = viridis(100),
+        main = paste0("Number of correct timing orders (n=",state_timing_replicates,") - ","Multinomial Simulated Data"),
+        border_color = NA,
+        scale = "none",
+        fontsize_row = 7)
+setHook("grid.newpage", NULL, "replace")
+grid.text("Proportion of clocklike mutations simulated", y=-0.02, gp=gpar(fontsize=16))
+grid.text("Copy number state and order", x=-0.07, rot=90, gp=gpar(fontsize=16))
+dev.off()
+```
+
+# Combined plot
+### Plotting two error rateheatmaps together
+```{r}
+mut_number_accuracy_heatmap <- pheatmap(plot_multinomial_mutation_number_and_accuracy, 
+        cluster_rows = FALSE, cluster_cols = FALSE,
+        # col = viridis(100),
+        color = c(viridis(100), viridis(100)[100]),
+        breaks = c(0:100,max(plot_multinomial_mutation_number_and_accuracy)),
+        main = paste0("Average error rate (%) of timing \n(n=",state_timing_replicates,")"),
+        xlab = "Number of mutations simulated",
+        ylab = "Copy number state and order",
+        border_color = NA,
+        scale = "none",
+        fontsize = 7)
+clocklike_accuracy_heatmap <- pheatmap(plot_multinomial_clocklike_proportions_and_accuracy, 
+        cluster_rows = FALSE, cluster_cols = FALSE,
+        # col = viridis(100),
+        color = c(viridis(100), viridis(100)[100]),
+        breaks = c(0:100,max(plot_multinomial_clocklike_proportions_and_accuracy)),
+        main = paste0("Average error rate (%) of timing \n(n=",state_timing_replicates,")"),
+        xlab = "Proportion of clocklike mutations simulated",
+        ylab = "Copy number state and order",
+        border_color = NA,
+        scale = "none",
+        fontsize = 7)
+```
+```{r fig.height=12}
+png(paste0(outdir,"mutation_number_and_error_rate_",
+                                                 state_timing_replicates,"_replicates",
+           "clocklike_proportion_and_error_rate_",
+                                                 n_replicates_clocklike,"_replicates",
+                                                 n_mutations_clocklike_test,"_mutations",
+                                                 "_","multinomial_data","_",
+                                                 Sys.Date(),".png"),
+    height = figure_height, width = figure_width, res = resolution, units = "cm")
+
+setHook("grid.newpage", function() pushViewport(viewport(x=1,y=1,width=0.95, height=0.95, name="vp", just=c("right","top"))), action="prepend")
+grid.arrange(grobs = list(mut_number_accuracy_heatmap[[4]],clocklike_accuracy_heatmap[[4]]),
+             ncol = 2)
+setHook("grid.newpage", NULL, "replace")
+grid.text("Number of mutations simulated", y=-0.02, x = 0.22, gp=gpar(fontsize=12))
+grid.text("Proportion of clocklike mutations simulated", y=-0.02, x = 0.73, gp=gpar(fontsize=12))
+grid.text("Copy number state and order", x=-0.02, rot=90, gp=gpar(fontsize=14))
+
+grid.text("A", x=-0.02, y=0.98, gp=gpar(fontsize=16))
+grid.text("B", x=0.47, y=0.98, gp=gpar(fontsize=16))
+
+dev.off()
+```
+
+### Plotting two order heatmaps together
+```{r}
+mut_number_order_heatmap <- pheatmap(plot_multinomial_mutation_number_and_number_correct_order, 
+        cluster_rows = FALSE, cluster_cols = FALSE,
+        col = viridis(100),
+        main = paste0("Number of correct timing orders \n(n=",state_timing_replicates,")"),
+        border_color = NA,
+        scale = "none",
+        fontsize = 7)
+
+clocklike_order_heatmap <- pheatmap(plot_multinomial_clocklike_proportions_and_number_correct_order, 
+        cluster_rows = FALSE, cluster_cols = FALSE,
+        col = viridis(100),
+        main = paste0("Number of correct timing orders \n(n=",state_timing_replicates,")"),
+        border_color = NA,
+        scale = "none",
+        fontsize = 7)
+```
+```{r fig.height=12}
+png(paste0(outdir,"mutation_number_and_correct_order_",
+                                                 state_timing_replicates,"_replicates",
+           "clocklike_proportion_and_correct_order_",
+                                                 n_replicates_clocklike,"_replicates",
+                                                 n_mutations_clocklike_test,"_mutations",
+                                                 "_","multinomial_data","_",
+                                                 Sys.Date(),".png"),
+    height = figure_height, width = figure_width, res = resolution, units = "cm")
+
+setHook("grid.newpage", function() pushViewport(viewport(x=1,y=1,width=0.95, height=0.95, name="vp", just=c("right","top"))), action="prepend")
+grid.arrange(grobs = list(mut_number_order_heatmap[[4]],clocklike_order_heatmap[[4]]),
+             ncol = 2)
+setHook("grid.newpage", NULL, "replace")
+grid.text("Number of mutations simulated", y=-0.02, x = 0.22, gp=gpar(fontsize=12))
+grid.text("Proportion of clocklike mutations simulated", y=-0.02, x = 0.73, gp=gpar(fontsize=12))
+grid.text("Copy number state and order", x=-0.02, rot=90, gp=gpar(fontsize=14))
+
+grid.text("A", x=-0.02, y=0.98, gp=gpar(fontsize=16))
+grid.text("B", x=0.47, y=0.98, gp=gpar(fontsize=16))
+
+dev.off()
+```
+
+
+# Mismatched equation data
+Try new plotting approach
+
+## 4+x
+Read in sample data.
+```{r}
+cn_4_0_WGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_4+0 WGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_4_0_GW <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_4+0 GW_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+
+cn_4_1_WGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_4+1 WGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_4_1_GW <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_4+1 GW_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+
+cn_4_2_WGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_4+2 WGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_4_2_GW <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_4+2 GW_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+```
+```{r}
+cn_4_x <- rbind(cn_4_0_WGG, cn_4_0_GW,
+                cn_4_1_WGG, cn_4_1_GW,
+                cn_4_2_WGG, cn_4_2_GW)
+```
+
+```{r}
+cn_4_x$Significance <- ifelse(cn_4_x$Spearman_adjusted_p < 0.05, "Significant","Not \nSignificant")
+```
+
+
+```{r}
+cn_4_x_pearson_plot <- ggplot(cn_4_x, aes(x = True_order, y = Applied_order, fill = Spearman_rho))+
+  geom_tile(aes(color=as.factor(Significance), width=0.9, height=0.9), size=0.3)+
+  scale_colour_manual(values = c("firebrick","royalblue","grey"), limits = c("Significant","\nNot Significant",NA), name = "Adjusted p")+
+  geom_text(aes(label=round(Spearman_rho,digits = 2)), size = 2)+
+  facet_grid(rows = vars(Timepoint), cols = vars(CN_state))+
+  # scale_fill_gradientn(colors = viridis_pal(option = "magma")(100), limits=c(-1, 1), 
+  #                      na.value = "grey")+
+  scale_fill_distiller(palette = "RdBu", limits = c(-1,1), name = "Spearman ρ")+
+  # scale_fill_viridis(option = "magma")+
+  theme_minimal()+
+  ylab("Applied timing order")+
+  xlab("True simulated timing order")
+cn_4_x_pearson_plot
+```
+
+## 5+x
+Read in sample data.
+```{r}
+cn_5_0_WGGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_5+0 WGGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_5_0_GWG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_5+0 GWG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+
+cn_5_1_WGGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_5+1 WGGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_5_1_GWG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_5+1 GWG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+
+cn_5_2_WGGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_5+2 WGGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_5_2_GWG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_5+2 GWG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+```
+```{r}
+cn_5_x <- rbind(cn_5_0_WGGG, cn_5_0_GWG,
+                cn_5_1_WGGG, cn_5_1_GWG,
+                cn_5_2_WGGG, cn_5_2_GWG)
+```
+
+```{r}
+cn_5_x$Significance <- ifelse(cn_5_x$Spearman_adjusted_p < 0.05, "Significant","Not Significant")
+```
+
+
+```{r}
+cn_5_x_pearson_plot <- ggplot(cn_5_x, aes(x = True_order, y = Applied_order, fill = Spearman_rho))+
+  geom_tile(aes(color=as.factor(Significance), width=0.9, height=0.9), size=0.3)+
+  scale_colour_manual(values = c("firebrick","royalblue","grey"), limits = c("Significant","Not Significant",NA), name = "Adjusted p")+
+  geom_text(aes(label=round(Spearman_rho,digits = 2)), size = 2)+
+  facet_grid(rows = vars(Timepoint), cols = vars(CN_state))+
+  # scale_fill_gradientn(colors = viridis_pal(option = "magma")(100), limits=c(-1, 1), 
+  #                      na.value = "grey")+
+  scale_fill_distiller(palette = "RdBu", limits = c(-1,1), name = "Spearman ρ")+
+  # scale_fill_viridis(option = "magma")+
+  theme_minimal()+
+  ylab("Applied timing order")+
+  xlab("True simulated timing order")
+cn_5_x_pearson_plot
+```
+
+## 6+x
+Read in sample data.
+```{r}
+cn_6_0_WGGGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_6+0 WGGGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_6_0_GWGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_6+0 GWGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_6_0_GGW <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_6+0 GGW_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+
+cn_6_1_WGGGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_6+1 WGGGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_6_1_GWGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_6+1 GWGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_6_1_GGW <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_6+1 GGW_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+
+cn_6_2_WGGGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_6+2 WGGGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_6_2_GWGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_6+2 GWGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_6_2_GGW <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_6+2 GGW_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+```
+```{r}
+cn_6_x <- rbind(cn_6_0_WGGGG, cn_6_0_GWGG, cn_6_0_GGW,
+                cn_6_1_WGGGG, cn_6_1_GWGG, cn_6_1_GGW,
+                cn_6_2_WGGGG, cn_6_2_GWGG, cn_6_2_GGW)
+```
+
+```{r}
+cn_6_x$Significance <- ifelse(cn_6_x$Spearman_adjusted_p < 0.05, "Significant","Not Significant")
+```
+
+
+```{r}
+cn_6_x_pearson_plot <- ggplot(cn_6_x, aes(x = True_order, y = Applied_order, fill = Spearman_rho))+
+  geom_tile(aes(color=as.factor(Significance), width=0.9, height=0.9), size=0.3)+
+  scale_colour_manual(values = c("firebrick","royalblue","grey"), limits = c("Significant","Not Significant",NA), name = "Adjusted p")+
+  geom_text(aes(label=round(Spearman_rho,digits = 2)), size = 2)+
+  facet_grid(rows = vars(Timepoint), cols = vars(CN_state))+
+  # scale_fill_gradientn(colors = viridis_pal(option = "magma")(100), limits=c(-1, 1), 
+  #                      na.value = "grey")+
+  scale_fill_distiller(palette = "RdBu", limits = c(-1,1), name = "Spearman ρ")+
+  # scale_fill_viridis(option = "magma")+
+  theme_minimal()+
+  ylab("Applied timing order")+
+  xlab("True simulated timing order")
+cn_6_x_pearson_plot
+```
+
+## 7+x
+Read in sample data.
+```{r}
+cn_7_0_WGGGGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_7+0 WGGGGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_7_0_GWGGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_7+0 GWGGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_7_0_GGWG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_7+0 GGWG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+
+cn_7_1_WGGGGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_7+1 WGGGGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_7_1_GWGGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_7+1 GWGGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_7_1_GGWG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_7+1 GGWG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+
+cn_7_2_WGGGGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_7+2 WGGGGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_7_2_GWGGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_7+2 GWGGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_7_2_GGWG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_7+2 GGWG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+```
+```{r}
+cn_7_x <- rbind(cn_7_0_WGGGGG, cn_7_0_GWGGG, cn_7_0_GGWG,
+                cn_7_1_WGGGGG, cn_7_1_GWGGG, cn_7_1_GGWG,
+                cn_7_2_WGGGGG, cn_7_2_GWGGG, cn_7_2_GGWG)
+```
+
+```{r}
+cn_7_x$Significance <- ifelse(cn_7_x$Spearman_adjusted_p < 0.05, "Significant","Not Significant")
+```
+
+
+```{r}
+cn_7_x_pearson_plot <- ggplot(cn_7_x, aes(x = True_order, y = Applied_order, fill = Spearman_rho))+
+  geom_tile(aes(color=as.factor(Significance), width=0.9, height=0.9), size=0.3)+
+  scale_colour_manual(values = c("firebrick","royalblue","grey"), limits = c("Significant","Not Significant",NA), name = "Adjusted p")+
+  geom_text(aes(label=round(Spearman_rho,digits = 2)), size = 2)+
+  facet_grid(rows = vars(Timepoint), cols = vars(CN_state))+
+  # scale_fill_gradientn(colors = viridis_pal(option = "magma")(100), limits=c(-1, 1), 
+  #                      na.value = "grey")+
+  scale_fill_distiller(palette = "RdBu", limits = c(-1,1), name = "Spearman ρ")+
+  # scale_fill_viridis(option = "magma")+
+  theme_minimal()+
+  ylab("Applied timing order")+
+  xlab("True simulated timing order")
+cn_7_x_pearson_plot
+```
+
+## 8+x
+Read in sample data.
+```{r}
+cn_8_0_WGGGGGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_8+0 WGGGGGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_8_0_GWGGGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_8+0 GWGGGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_8_0_GGWGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_8+0 GGWGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_8_0_GGGW <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_8+0 GGGW_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+
+cn_8_1_WGGGGGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_8+1 WGGGGGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_8_1_GWGGGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_8+1 GWGGGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_8_1_GGWGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_8+1 GGWGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_8_1_GGGW <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_8+1 GGGW_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+
+cn_8_2_WGGGGGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_8+2 WGGGGGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_8_2_GWGGGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_8+2 GWGGGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_8_2_GGWGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_8+2 GGWGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_8_2_GGGW <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_8+2 GGGW_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+```
+```{r}
+cn_8_x <- rbind(cn_8_0_WGGGGGG, cn_8_0_GWGGGG, cn_8_0_GGWGG, cn_8_0_GGGW,
+                cn_8_1_WGGGGGG, cn_8_1_GWGGGG, cn_8_1_GGWGG, cn_8_1_GGGW,
+                cn_8_2_WGGGGGG, cn_8_2_GWGGGG, cn_8_2_GGWGG, cn_8_2_GGGW)
+```
+
+```{r}
+cn_8_x$Significance <- ifelse(cn_8_x$Spearman_adjusted_p < 0.05, "Significant","Not Significant")
+```
+
+
+```{r}
+cn_8_x_pearson_plot <- ggplot(cn_8_x, aes(x = True_order, y = Applied_order, fill = Spearman_rho))+
+  geom_tile(aes(color=as.factor(Significance), width=0.9, height=0.9), size=0.3)+
+  scale_colour_manual(values = c("firebrick","royalblue","grey"), limits = c("Significant","Not Significant",NA), name = "Adjusted p")+
+  geom_text(aes(label=round(Spearman_rho,digits = 2)), size = 2)+
+  facet_grid(rows = vars(Timepoint), cols = vars(CN_state))+
+  # scale_fill_gradientn(colors = viridis_pal(option = "magma")(100), limits=c(-1, 1), 
+  #                      na.value = "grey")+
+  scale_fill_distiller(palette = "RdBu", limits = c(-1,1), name = "Spearman ρ")+
+  # scale_fill_viridis(option = "magma")+
+  theme_minimal()+
+  ylab("Applied timing order")+
+  xlab("True simulated timing order")
+cn_8_x_pearson_plot
+```
+
+## 9+x
+Read in sample data.
+```{r}
+cn_9_0_WGGGGGGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_9+0 WGGGGGGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_9_0_GWGGGGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_9+0 GWGGGGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_9_0_GGWGGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_9+0 GGWGGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_9_0_GGGWG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_9+0 GGGWG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+
+cn_9_1_WGGGGGGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_9+1 WGGGGGGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_9_1_GWGGGGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_9+1 GWGGGGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_9_1_GGWGGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_9+1 GGWGGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_9_1_GGGWG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_9+1 GGGWG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+
+cn_9_2_WGGGGGGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_9+2 WGGGGGGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_9_2_GWGGGGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_9+2 GWGGGGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_9_2_GGWGGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_9+2 GGWGGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_9_2_GGGWG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_9+2 GGGWG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+```
+```{r}
+cn_9_x <- rbind(cn_9_0_WGGGGGGG, cn_9_0_GWGGGGG, cn_9_0_GGWGGG, cn_9_0_GGGWG,
+                cn_9_1_WGGGGGGG, cn_9_1_GWGGGGG, cn_9_1_GGWGGG, cn_9_1_GGGWG,
+                cn_9_2_WGGGGGGG, cn_9_2_GWGGGGG, cn_9_2_GGWGGG, cn_9_2_GGGWG)
+```
+
+```{r}
+cn_9_x$Significance <- ifelse(cn_9_x$Spearman_adjusted_p < 0.05, "Significant","Not Significant")
+```
+
+
+```{r}
+cn_9_x_pearson_plot <- ggplot(cn_9_x, aes(x = True_order, y = Applied_order, fill = Spearman_rho))+
+  geom_tile(aes(color=as.factor(Significance), width=0.9, height=0.9), size=0.3)+
+  scale_colour_manual(values = c("firebrick","royalblue","grey"), limits = c("Significant","Not Significant",NA), name = "Adjusted p")+
+  geom_text(aes(label=round(Spearman_rho,digits = 2)), size = 2)+
+  facet_grid(rows = vars(Timepoint), cols = vars(CN_state))+
+  # scale_fill_gradientn(colors = viridis_pal(option = "magma")(100), limits=c(-1, 1), 
+  #                      na.value = "grey")+
+  scale_fill_distiller(palette = "RdBu", limits = c(-1,1), name = "Spearman ρ")+
+  # scale_fill_viridis(option = "magma")+
+  theme_minimal()+
+  ylab("Applied timing order")+
+  xlab("True simulated timing order")
+cn_9_x_pearson_plot
+```
+
+## 10+x
+Read in sample data.
+```{r}
+cn_10_0_WGGGGGGGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_10+0 WGGGGGGGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_10_0_GWGGGGGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_10+0 GWGGGGGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_10_0_GGWGGGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_10+0 GGWGGGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_10_0_GGGWGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_10+0 GGGWGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_10_0_GGGGW <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_10+0 GGGGW_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+
+cn_10_1_WGGGGGGGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_10+1 WGGGGGGGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_10_1_GWGGGGGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_10+1 GWGGGGGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_10_1_GGWGGGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_10+1 GGWGGGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_10_1_GGGWGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_10+1 GGGWGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_10_1_GGGGW <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_10+1 GGGGW_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+
+cn_10_2_WGGGGGGGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_10+2 WGGGGGGGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_10_2_GWGGGGGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_10+2 GWGGGGGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_10_2_GGWGGGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_10+2 GGWGGGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_10_2_GGGWGG <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_10+2 GGGWGG_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+cn_10_2_GGGGW <- read.delim(paste0(results_dir,"applying_right_and_wrong_equations/right_vs_wrong_equations_spearman_correlation_10+2 GGGGW_100_replicates100_mutations_multinomial_data_2024-01-05.txt"), header = TRUE, sep = "\t")
+```
+```{r}
+cn_10_x <- rbind(cn_10_0_WGGGGGGGG, cn_10_0_GWGGGGGG, cn_10_0_GGWGGGG, cn_10_0_GGGWGG, cn_10_0_GGGGW,
+                 cn_10_1_WGGGGGGGG, cn_10_1_GWGGGGGG, cn_10_1_GGWGGGG, cn_10_1_GGGWGG, cn_10_1_GGGGW,
+                 cn_10_2_WGGGGGGGG, cn_10_2_GWGGGGGG, cn_10_2_GGWGGGG, cn_10_2_GGGWGG, cn_10_2_GGGGW)
+```
+
+```{r}
+cn_10_x$Significance <- ifelse(cn_10_x$Spearman_adjusted_p < 0.05, "Significant","Not Significant")
+```
+
+
+```{r}
+cn_10_x_pearson_plot <- ggplot(cn_10_x, aes(x = True_order, y = Applied_order, fill = Spearman_rho))+
+  geom_tile(aes(color=as.factor(Significance), width=0.9, height=0.9), size=0.3)+
+  scale_colour_manual(values = c("firebrick","royalblue","grey"), limits = c("Significant","Not Significant",NA), name = "Adjusted p")+
+  geom_text(aes(label=round(Spearman_rho,digits = 2)), size = 2)+
+  facet_grid(rows = vars(Timepoint), cols = vars(CN_state))+
+  # scale_fill_gradientn(colors = viridis_pal(option = "magma")(100), limits=c(-1, 1), 
+  #                      na.value = "grey")+
+  scale_fill_distiller(palette = "RdBu", limits = c(-1,1), name = "Spearman ρ")+
+  # scale_fill_viridis(option = "magma")+
+  theme_minimal()+
+  ylab("Applied timing order")+
+  xlab("True simulated timing order")
+cn_10_x_pearson_plot
+```
+
+## Combined plot
+```{r fig.height=22.5, fig.width=17.8}
+png(paste0(outdir,"pearson_and_mix_match_equations_4_9_",
+                                                 n_replicates_mismatched,"_replicates",
+                                                 n_mutations_mismatched,"_mutations",
+                                                 "_","multinomial_data","_",
+                                                 Sys.Date(),".png"),
+    height = figure_height, width = figure_width, units = "cm",
+    res = 350)
+
+grid.arrange(cn_4_x_pearson_plot+theme(axis.title = element_blank(),axis.text = element_text(size = 6), plot.margin = unit(c(0,0,0,0.2), "cm"), legend.position = "left", strip.text = element_text(size = 8), legend.box.spacing = unit(0.05, "cm"), legend.key.width = unit(0.3,"cm"), legend.text = element_text(size = 6), legend.title = element_text(size = 6), legend.box = "horizontal", legend.spacing = unit(0,"cm")), 
+             cn_5_x_pearson_plot+theme(axis.title = element_blank(),axis.text = element_text(size = 6), plot.margin = unit(c(0,0,0,0), "cm"), legend.position = "none", strip.text = element_text(size = 8)),
+             cn_6_x_pearson_plot+theme(axis.title = element_blank(),axis.text = element_text(size = 6), plot.margin = unit(c(0,0,0,0), "cm"), legend.position = "none", strip.text = element_text(size = 8), axis.text.x = element_text(angle = -20)), 
+             cn_7_x_pearson_plot+theme(axis.title = element_blank(),axis.text = element_text(size = 6), plot.margin = unit(c(0,0,0,0), "cm"), legend.position = "none", strip.text = element_text(size = 8), axis.text.x = element_text(angle = -20)),
+             cn_8_x_pearson_plot+theme(axis.title = element_blank(),axis.text = element_text(size = 6), plot.margin = unit(c(0,0,0,0), "cm"), legend.position = "none", strip.text = element_text(size = 8), axis.text.x = element_text(angle = -25)), 
+             cn_9_x_pearson_plot+theme(axis.title = element_blank(),axis.text = element_text(size = 6), plot.margin = unit(c(0,0,0,0), "cm"), legend.position = "none", strip.text = element_text(size = 8), axis.text.x = element_text(angle = -25)),
+             # cn_10_x_pearson_plot+theme(axis.title = element_blank(),axis.text = element_text(size = 4), plot.margin = unit(c(0,0,0,0), "cm")),
+             ncol = 2, nrow = 3,
+             left = "Applied timing order", bottom = "True simulated timing order",
+             layout_matrix = rbind(c(1,2),
+                                   c(3,4),
+                                   c(5,6)
+                                   # c(7,7)
+                                   ),
+             heights = c(3,5,9), padding = unit(0.5, "cm"))
+
+grid.text("A", x=0.05, y=0.98, gp=gpar(fontsize=16))
+grid.text("B", x=0.50, y=0.98, gp=gpar(fontsize=16))
+grid.text("C", x=0.05, y=0.82, gp=gpar(fontsize=16))
+grid.text("D", x=0.50, y=0.82, gp=gpar(fontsize=16))
+grid.text("E", x=0.05, y=0.54, gp=gpar(fontsize=16))
+grid.text("F", x=0.50, y=0.54, gp=gpar(fontsize=16))
+
+dev.off()
+```
+
+```{r}
+png(paste0(outdir,"pearson_and_mix_match_equations_10_X_",
+                                                 n_replicates_mismatched,"_replicates",
+                                                 n_mutations_mismatched,"_mutations",
+                                                 "_","multinomial_data","_",
+                                                 Sys.Date(),".png"),
+    height = 16, width = figure_width, units = "cm",
+    res = 350)
+cn_10_x_pearson_plot+
+  theme(axis.text = element_text(size = 8), 
+        axis.text.x = element_text(angle = -20, hjust = -0.01))
+dev.off()
+```
+
+# Session info
+```{r}
+sessionInfo()
+```
+
+Save session info
+```{r}
+writeLines(capture.output(sessionInfo()), paste0(outdir,data_type,"_plotting_simulation_sessionInfo_",Sys.Date(),".txt"))
+```
+

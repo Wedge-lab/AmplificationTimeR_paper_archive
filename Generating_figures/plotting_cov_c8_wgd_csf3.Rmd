@@ -1,0 +1,302 @@
+---
+title: "Timing all gains on chromosome 8 - Timing events across chromosome arm to check consistency"
+output: 
+  html_document:
+    df_print: paged
+---
+The purpose of this R notebook is to check how consistent timing inferences are for segments on the same chromosome from the same sample. To address this we timed all segments on chromosme 8 in BRCA, OV, and PRAD samples available through PCAWG.
+
+Samples with evidence of a mismatch between the copy number and DP clust file were remove, and only one sample is analysed per donor. 
+
+# Packages
+```{r}
+library(ggplot2)
+library(data.table)
+library(ggsignif)
+'%!in%' <- function(x,y)!('%in%(x,y)')
+```
+
+# Parameters
+```{r}
+outdir <- "/mnt/bmh01-rds/UoOxford_David_W/b05055gj/PCAWG_analysis/20231116_AmplificationTimeR_review_response/final_figures/"
+figure_height <- 22.5
+figure_width <- 17.8
+figure_width_half <- 8.6
+resolution <- 350
+```
+
+
+# Data
+Timing results using all mutations in the gained segment
+
+```{r}
+timing_results <- read.delim("/mnt/bmh01-rds/UoOxford_David_W/b05055gj/PCAWG_analysis/20231116_AmplificationTimeR_review_response/BRCA_OV_PRAD_AmplificationTimeR_C8_results_sbs1_sbs5_2024-01-05_removed_mismatch_single_aliquot.txt", header = TRUE, sep = "\t")
+```
+
+```{r}
+mismatched_samples <- read.delim("/mnt/bmh01-rds/UoOxford_David_W/b05055gj/suspected_PCAWG_BRCA_OV_PRAD_suspect_mismatches_unchecked_070224.txt", sep = "\t", header = TRUE)
+```
+
+Subset for BRCA and OV
+```{r}
+timing_results <- subset(timing_results, dcc_project_code %in% c("BRCA-UK","BRCA-EU","BRCA-US",
+                                                    "OV-AU","OV-US"))
+```
+
+```{r}
+# *** REMOVE MISMATCHED DATA ***
+timing_results <- timing_results[!(timing_results$sample %in% mismatched_samples$tumor_wgs_aliquot_id),]
+#
+```
+
+
+# Data wrangling
+Length of events
+```{r}
+timing_results$start <- gsub("8:","",timing_results$region)
+timing_results$start <- gsub("-.*","",timing_results$start)
+
+timing_results$end <- gsub("8:","",timing_results$region)
+timing_results$end <- gsub(".*-","",timing_results$end)
+
+timing_results$start <- as.numeric(timing_results$start)
+timing_results$end <- as.numeric(timing_results$end)
+
+timing_results$length <- (timing_results$end - timing_results$start)+1
+```
+
+```{r}
+timing_results$highest_copy_number <- as.factor(timing_results$highest_copy_number)
+table(timing_results$highest_copy_number)
+```
+
+Add levels in order from table
+```{r}
+timing_results$highest_copy_number <- factor(timing_results$highest_copy_number, levels = c("1+0",  "1+1",
+                                                                                            "2+0",  "2+1",  "2+2",
+                                                                                            "3+0",  "3+1",  "3+2",  "3+3",
+                                                                                            "4+0",  "4+1",  "4+2",  "4+3",  "4+4",
+                                                                                            "5+0",  "5+1",  "5+2",  "5+3",  "5+4",  "5+5",
+                                                                                            "6+0",  "6+1",  "6+2",  "6+3", "6+4",  "6+5",
+                                                                                            "7+0",  "7+1",  "7+2",  "7+3",  "7+4",  "7+5",  "7+7",
+                                                                                            "8+0",  "8+1",  "8+2",  "8+3",  "8+4",  "8+5",  "8+7",
+                                                                                            "9+0",  "9+1",  "9+2",  "9+3",  "9+7",
+                                                                                            "10+0", "10+1", "10+2", "10+3", "10+8",
+                                                                                            "11+0", "11+1", "11+2", "11+3", "11+5", 
+                                                                                            "12+1", "12+2", "12+3", "12+5",
+                                                                                            "13+1", "13+2", "13+3", 
+                                                                                            "14+1", "14+2", 
+                                                                                            "15+2", "15+3",
+                                                                                            "16+1", "16+2", "16+3", "16+4",
+                                                                                            "17+1", "17+2", "17+3", "17+4", "17+5",
+                                                                                            "18+2", 
+                                                                                            "19+2", 
+                                                                                            "20+2", "20+5",
+                                                                                            "21+3",
+                                                                                            "23+2", "23+4",
+                                                                                            "24+2",
+                                                                                            "25+3",
+                                                                                            "26+1"))
+```
+
+Remove segments that couldn't be timed
+```{r}
+timing_results_sub <- subset(timing_results, event_order != "Cannot be timed")
+```
+
+# Looking only at WGD events
+Subset for WGD event samples only
+```{r}
+timing_results_wgd <- timing_results_sub[grepl("W",timing_results_sub$event_order),]
+```
+
+Melt data
+```{r}
+timing_results_wgd_melt <- melt(as.data.table(timing_results_wgd), 
+                                     id.vars = c("sample","region","highest_copy_number",
+                                                 "event_order","num_mutations_used",
+                                                 "start","end"),
+                                     measure.vars = c("t_1_mean_bootstrap","t_2_mean_bootstrap",
+                                                      "t_3_mean_bootstrap","t_4_mean_bootstrap",
+                                                      "t_5_mean_bootstrap","t_6_mean_bootstrap",
+                                                      "t_7_mean_bootstrap","t_8_mean_bootstrap",
+                                                      "t_9_mean_bootstrap"))
+```
+
+Create an event symbol column for each timepoint to indicate whether it is a W or G
+```{r}
+timing_results_wgd_melt$event_symbol <- ifelse(timing_results_wgd_melt$variable == "t_1_mean_bootstrap", 
+                                                    yes = substr(timing_results_wgd_melt$event_order,1,1), 
+                                                    no = ifelse(timing_results_wgd_melt$variable == "t_2_mean_bootstrap", 
+                                                                yes = substr(timing_results_wgd_melt$event_order,2,2),
+                                                                no = ifelse(timing_results_wgd_melt$variable == "t_3_mean_bootstrap", 
+                                                                            yes = substr(timing_results_wgd_melt$event_order,3,3), 
+                                                                            no = ifelse(timing_results_wgd_melt$variable == "t_4_mean_bootstrap", 
+                                                                                        yes = substr(timing_results_wgd_melt$event_order,4,4), 
+                                                                                        no = ifelse(timing_results_wgd_melt$variable == "t_5_mean_bootstrap", 
+                                                                                                    yes = substr(timing_results_wgd_melt$event_order,5,5), 
+                                                                                                    no = ifelse(timing_results_wgd_melt$variable == "t_6_mean_bootstrap", 
+                                                                                                                yes = substr(timing_results_wgd_melt$event_order,6,6), 
+                                                                                                                no = ifelse(timing_results_wgd_melt$variable == "t_7_mean_bootstrap", 
+                                                                                                                            yes = substr(timing_results_wgd_melt$event_order,7,7), 
+                                                                                                                            no = ifelse(timing_results_wgd_melt$variable == "t_8_mean_bootstrap", 
+                                                                                                                                        yes = substr(timing_results_wgd_melt$event_order,8,8), 
+                                                                                                                                        no = ifelse(timing_results_wgd_melt$variable == "t_9_mean_bootstrap", 
+                                                                                                                                                    yes = substr(timing_results_wgd_melt$event_order,9,9), 
+                                                                                                                                                    no = NA)))))))))
+
+```
+
+```{r}
+timing_results_wgd_melt$event_symbol_number <- paste0(timing_results_wgd_melt$event_symbol,
+                                                           substr(timing_results_wgd_melt$variable,3,3))
+```
+Remove unused timepoints (e.g. remove t_7 NA values from samples that only had 6 timepoints)
+```{r}
+timing_results_wgd_melt <- timing_results_wgd_melt[!is.na(timing_results_wgd_melt$value)]
+```
+
+Select the WGD times
+```{r}
+timing_results_wgd_melt_w <- subset(timing_results_wgd_melt, event_symbol == "W")
+```
+
+```{r}
+hist(table(timing_results_wgd_melt_w$sample),breaks = 20)
+```
+
+Identify samples with more than one timed segment along 8q. 
+```{r}
+timing_results_wgd_melt_w_over_1_seg <- as.data.frame(table(timing_results_wgd_melt_w$sample))
+timing_results_wgd_melt_w_over_1_seg <- subset(timing_results_wgd_melt_w_over_1_seg, Freq > 1)
+hist(timing_results_wgd_melt_w_over_1_seg$Freq,breaks = 20)
+```
+
+Summary of number of timed segments per sample for samples with >1 timed WGD segment.
+```{r}
+summary(timing_results_wgd_melt_w_over_1_seg)
+```
+
+Mean ~5 segments along chromosome 8 for WGD samples that have more than one WGD segment estimate across the chromosome.
+
+Create output tables for coefficient of variation
+```{r}
+cov_wgd_time_output <- as.data.frame(matrix(nrow = nrow(timing_results_wgd_melt_w_over_1_seg), ncol = 4))
+colnames(cov_wgd_time_output) <- c("sample","coefficient_of_variation","average_num_mutations_used","num_segments")
+cov_wgd_time_output$sample <- timing_results_wgd_melt_w_over_1_seg$Var1
+
+cov_wgd_time_output_random <- as.data.frame(matrix(nrow = nrow(timing_results_wgd_melt_w_over_1_seg), ncol = 4))
+colnames(cov_wgd_time_output_random) <- c("sample","coefficient_of_variation","average_num_mutations_used","num_segments")
+cov_wgd_time_output_random$sample <- paste0("sample_",1:nrow(timing_results_wgd_melt_w_over_1_seg))
+```
+
+Calculate the coefficient of variation for WGD estimates within each sample.
+```{r}
+for(i in 1:nrow(cov_wgd_time_output)){
+  sub_wgd_melt <- subset(timing_results_wgd_melt, sample == cov_wgd_time_output$sample[i] &
+                           event_symbol == "W")
+  
+  sample_sd <- sd(sub_wgd_melt$value)
+  sample_mean <- mean(sub_wgd_melt$value)
+  sample_cov <- (sample_sd/sample_mean)
+  
+  mean_muts <- mean(sub_wgd_melt$num_mutations_used)
+  
+  cov_wgd_time_output$coefficient_of_variation[i] <- sample_cov
+  cov_wgd_time_output$average_num_mutations_used[i] <- mean_muts
+  cov_wgd_time_output$num_segments[i] <- nrow(sub_wgd_melt)
+}
+cov_wgd_time_output$type <- "Within Sample"
+```
+
+Assign NaN to 0; these are samples with an estimate of timepoint = 0 across all samples, so mean is 0 (which we can't divide by). 
+```{r}
+cov_wgd_time_output$coefficient_of_variation[is.nan(cov_wgd_time_output$coefficient_of_variation)] <- 0
+```
+
+
+Add outlier column for ease of plotting
+```{r}
+cov_wgd_time_output$outlier <- ifelse(test = cov_wgd_time_output$coefficient_of_variation > (quantile(cov_wgd_time_output$coefficient_of_variation, 0.75)+(1.50*IQR(cov_wgd_time_output$coefficient_of_variation))), yes = "Outlier", no = ifelse(test = cov_wgd_time_output$coefficient_of_variation < (quantile(cov_wgd_time_output$coefficient_of_variation, 0.25)-(1.50*IQR(cov_wgd_time_output$coefficient_of_variation))), yes = "Outlier", no = NA))
+
+```
+
+From the pool of timed samples, randomly select n WGD times (distribution og n is equal that of real data) and calculate coefficient of variation. 
+```{r}
+for(i in 1:nrow(cov_wgd_time_output_random)){
+  sub_wgd_melt <- subset(timing_results_wgd_melt, event_symbol == "W" &
+                           sample %in% timing_results_wgd_melt_w_over_1_seg$Var1)
+  
+  n_wgd_segments_to_sample <- cov_wgd_time_output$num_segments[i] # try using the number of samples used in real data rather than just mean
+  
+  sub_wgd_melt <- sub_wgd_melt[(sample(1:nrow(sub_wgd_melt), size = n_wgd_segments_to_sample, replace = FALSE)),]
+  
+  sample_sd <- sd(sub_wgd_melt$value)
+  sample_mean <- mean(sub_wgd_melt$value)
+  sample_cov <- (sample_sd/sample_mean)
+  
+  mean_muts <- mean(sub_wgd_melt$num_mutations_used)
+  
+  cov_wgd_time_output_random$coefficient_of_variation[i] <- sample_cov
+  cov_wgd_time_output_random$average_num_mutations_used[i] <- mean_muts
+  cov_wgd_time_output_random$num_segments[i] <- nrow(sub_wgd_melt)
+}
+cov_wgd_time_output_random$type <- "Randomly Sampled"
+```
+
+Assign NaN to 0; these are samples with an estimate of timepoint 0 across all samples, so mean is 0 (which we can't divide by). 
+```{r}
+cov_wgd_time_output_random$coefficient_of_variation[is.nan(cov_wgd_time_output_random$coefficient_of_variation)] <- 0
+```
+
+
+Add outlier column for ease of plotting
+```{r}
+cov_wgd_time_output_random$outlier <- ifelse(test = cov_wgd_time_output_random$coefficient_of_variation > (quantile(cov_wgd_time_output_random$coefficient_of_variation, 0.75)+(1.50*IQR(cov_wgd_time_output_random$coefficient_of_variation))), yes = "Outlier", no = ifelse(test = cov_wgd_time_output_random$coefficient_of_variation < (quantile(cov_wgd_time_output_random$coefficient_of_variation, 0.25)-(1.50*IQR(cov_wgd_time_output_random$coefficient_of_variation))), yes = "Outlier", no = NA))
+```
+
+
+Combine real and random coefficients of variation and compare
+```{r}
+cov_combined <- rbind(cov_wgd_time_output, cov_wgd_time_output_random)
+```
+
+Check if there is a significant difference between them.
+```{r}
+wilcox.test(cov_wgd_time_output$coefficient_of_variation, cov_wgd_time_output_random$coefficient_of_variation)
+```
+
+# Plot COV
+```{r}
+cov_plot <- ggplot(cov_combined, aes(y = coefficient_of_variation, x = type))+
+  geom_boxplot(outlier.colour = NA)+
+  geom_jitter(alpha = 0.8, width = 0.3, aes(colour = outlier))+
+  ylab("Coefficient of Variation")+
+  xlab("Segment source")+
+  theme_light()+
+  theme(legend.position = "none")+
+  geom_signif(map_signif_level = TRUE, tip_length = 0, comparisons = list(c("Randomly Sampled","Within Sample")),
+              method = "wilcox")
+cov_plot
+```
+
+# Save plot
+
+```{r}
+png(paste0(outdir,"cov_c8_wgd_",Sys.Date(),".png"),
+    res = resolution, height = 12, width = figure_width, units = "cm")
+cov_plot
+dev.off()
+```
+
+# Session info
+```{r}
+sessionInfo()
+```
+
+Save session info
+```{r}
+writeLines(capture.output(sessionInfo()), paste0(outdir,"plotting_cov_c8_sessionInfo_",Sys.Date(),".txt"))
+```
+
+
