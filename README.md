@@ -1,5 +1,7 @@
 # AmplificationTimeR_paper_archive
 A repository to store any code that was run as part of the `AmplificationTimeR` publication.
+> G Maria Jakobsdottir, Stefan C Dentro, Robert G Bristow, David C Wedge, AmplificationTimeR: An R Package for Timing Sequential Amplification Events, Bioinformatics, 2024;, btae281, https://doi.org/10.1093/bioinformatics/btae281
+
 
 ## Overview of files and folders
 - `Generating_figures`: A folder containing Rmarkdown documents for generating figures that form part of the `AmplificationTimeR` manuscript, as well as their html output, and session info files listing tools and programme versions.
